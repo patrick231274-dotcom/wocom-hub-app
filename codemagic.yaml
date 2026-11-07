@@ -1,0 +1,56 @@
+# WOCOM HUB: iPhone builds on Codemagic → TestFlight.
+# Android builds stay on the push server (/home/builder/build.sh).
+#
+# Set up once in Codemagic (never in this file or in chat):
+#   Team settings → Integrations → Developer Portal: add the App Store Connect API key, named "WOCOM ASC".
+#   App → Environment variables, group "wocom_ios":
+#     GOOGLE_SERVICE_INFO_PLIST  base64 of ios/Runner/GoogleService-Info.plist (Firebase, iOS app com.wocom.app)
+#     APP_STORE_APPLE_ID         the app's numeric Apple ID (App Store Connect → App Information)
+workflows:
+  ios-testflight:
+    name: WOCOM HUB iOS → TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: WOCOM ASC
+    environment:
+      flutter: 3.47.8
+      xcode: latest
+      cocoapods: default
+      groups:
+        - wocom_ios
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.wocom.app
+    triggering:
+      events: []        # start builds by hand (Start new build) until the flow is proven
+    scripts:
+      - name: Firebase config
+        script: |
+          if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
+            echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > ios/Runner/GoogleService-Info.plist
+          else
+            echo "GOOGLE_SERVICE_INFO_PLIST not set: building without Firebase (no chat/missed-call alerts)"
+          fi
+      - name: Packages
+        script: flutter pub get
+      - name: CocoaPods
+        script: cd ios && pod install --repo-update
+      - name: Signing profiles
+        script: xcode-project use-profiles
+      - name: Build IPA
+        script: |
+          LAST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          BUILD=$(( ${LAST:-0} + 1 ))
+          [ "$BUILD" -lt 100 ] && BUILD=100
+          flutter build ipa --release \
+            --dart-define-from-file=brands/wocom.json \
+            --build-number=$BUILD \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

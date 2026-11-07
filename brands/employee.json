@@ -1,0 +1,23 @@
+{
+  "BRAND_NAME": "WE App",
+  "BRAND_LOGO": "assets/wocom-logo.png",
+  "BRAND_LOGO_WHITE": "assets/wocom-logo-white.png",
+  "BRAND_MARK": "assets/wocom-mark.png",
+  "BRAND_WEBSITE": "https://wocomja.com",
+  "BRAND_WEBSITE_LABEL": "wocomja.com",
+  "BRAND_UPDATE_URL": "https://push.wocomenterprise.com/downloads/version-employee.json",
+  "BRAND_TECHHUB_URL": "https://techhub.wocomenterprise.com/api/mobile/v1",
+  "BRAND_KEY": "employee",
+  "BRAND_DARK_HEX": "#0B3D1F",
+  "BRAND_ACCENT": 4278229818,
+  "BRAND_DEEP": 4278221358,
+  "BRAND_ACCENT2": 4291402240,
+  "BRAND_DARK": 4278926623,
+  "BRAND_SOFT": 4293260778,
+  "BRAND_BG": 4294310646,
+  "BRAND_INK": 4279445019,
+  "BRAND_MUTED": 4283129427,
+  "BRAND_LINE": 4292667872,
+  "BRAND_TINT": 4288338864,
+  "BRAND_TINT_LIGHT": 4292342496
+}

@@ -1,0 +1,22 @@
+{
+  "BRAND_NAME": "Spice Mobile",
+  "BRAND_LOGO": "assets/spice-logo.png",
+  "BRAND_LOGO_WHITE": "assets/spice-logo-white.png",
+  "BRAND_MARK": "assets/spice-mark.png",
+  "BRAND_WEBSITE": "https://spicemobile.gd",
+  "BRAND_WEBSITE_LABEL": "spicemobile.gd",
+  "BRAND_UPDATE_URL": "https://push.wocomenterprise.com/downloads/version-spice.json",
+  "BRAND_DARK_HEX": "#0C1B17",
+  "BRAND_ACCENT": 4278232702,
+  "BRAND_DEEP": 4278221406,
+  "BRAND_ACCENT2": 4280465212,
+  "BRAND_DARK": 4278983447,
+  "BRAND_SOFT": 4293326574,
+  "BRAND_BG": 4294179061,
+  "BRAND_INK": 4278983447,
+  "BRAND_MUTED": 4283129687,
+  "BRAND_LINE": 4292666848,
+  "BRAND_TINT": 4289585574,
+  "BRAND_TINT_LIGHT": 4292342751,
+  "BRAND_KEY": "spice"
+}

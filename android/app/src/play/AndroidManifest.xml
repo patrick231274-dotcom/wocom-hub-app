@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Google Play build. Play forbids self-updating apps; Play delivers updates instead. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove"/>
+    <!-- Calls wake via high-priority FCM; users can still switch optimisation off in Settings. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" tools:node="remove"/>
+    <application>
+        <!-- In-app updater's APK hand-off. -->
+        <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.wocomfiles" tools:node="remove"/>
+        <!-- Location is read only in the foreground (emergency calls); no location foreground service. -->
+        <service android:name="com.baseflow.geolocator.GeolocatorLocationService" tools:node="remove"/>
+    </application>
+</manifest>
