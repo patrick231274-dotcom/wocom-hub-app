@@ -4,6 +4,11 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove"/>
     <!-- Calls wake via high-priority FCM; users can still switch optimisation off in Settings. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" tools:node="remove"/>
+    <!-- Photos come from the Android photo picker (no permission needed); Play's photo/video policy
+         forbids these permissions for occasional picking. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove"/>
     <application>
         <!-- In-app updater's APK hand-off. -->
         <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.wocomfiles" tools:node="remove"/>

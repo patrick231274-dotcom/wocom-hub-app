@@ -202,7 +202,9 @@ class Phone extends ChangeNotifier implements SipUaHelperListener {
       // and contact. A second copy of the app or a reconnect then REPLACES this phone's
       // registration on the switch rather than adding one, so only the newest copy is rung.
       ..instanceId = deviceUuid
-      ..contact_uri = 'sip:w${deviceUuid.substring(0, 8)}@wocom.invalid${Brand.isEmployee ? ';transport=ws' : ''}'
+      // transport=ws on every brand: without it FreeSWITCH builds the route back to the app with no
+      // transport and sends INVITEs over UDP, failing at once with a local 503 (calls went to voicemail).
+      ..contact_uri = 'sip:w${deviceUuid.substring(0, 8)}@wocom.invalid;transport=ws'
       ..webSocketUrl = sip['wss_uri'] as String
       ..uri = 'sip:${sip['extension']}@${sip['domain']}'
       ..authorizationUser = sip['extension'].toString()
