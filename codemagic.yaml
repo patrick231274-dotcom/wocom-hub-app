@@ -7,6 +7,26 @@
 #     GOOGLE_SERVICE_INFO_PLIST  base64 of ios/Runner/GoogleService-Info.plist (Firebase, iOS app com.wocom.app)
 #     APP_STORE_APPLE_ID         the app's numeric Apple ID (App Store Connect → App Information)
 workflows:
+  # No Apple keys needed: proves the iPhone app compiles on a Mac (no signing, no upload).
+  ios-check:
+    name: iOS compile check (no signing)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: 3.47.8
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Packages
+        script: flutter pub get
+      - name: CocoaPods
+        script: cd ios && pod install --repo-update
+      - name: Build (unsigned)
+        script: flutter build ios --release --no-codesign --dart-define-from-file=brands/wocom.json
+    artifacts:
+      - build/ios/iphoneos/*.app
+      - /tmp/xcodebuild_logs/*.log
+
   ios-testflight:
     name: WOCOM HUB iOS → TestFlight
     max_build_duration: 60
