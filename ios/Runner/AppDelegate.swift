@@ -30,6 +30,13 @@ import WebRTC
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     let ok = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    #if canImport(WebRTC)
+    // CallKit owns the audio session: WebRTC must not start audio itself, only when iOS hands the
+    // session over (didActivateAudioSession). Without this, calls answered from the lock screen
+    // connect with no sound.
+    RTCAudioSession.sharedInstance().useManualAudio = true
+    RTCAudioSession.sharedInstance().isAudioEnabled = false
+    #endif
     let registry = PKPushRegistry(queue: DispatchQueue.main)
     registry.delegate = self
     registry.desiredPushTypes = [.voIP]

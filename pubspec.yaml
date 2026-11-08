@@ -1,7 +1,7 @@
 name: wocom_app
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.31.4+103
+version: 0.31.5+104
 
 environment:
   sdk: ^3.13.7
