@@ -80,24 +80,32 @@ class PushService {
 
   /// Send this phone's token to WOCOM (after sign-in and whenever it changes).
   Future<void> registerToken() async {
+    String? t;
     try {
-      final t = await FirebaseMessaging.instance.getToken();
-      if (t != null) await _register(t);
+      t = await FirebaseMessaging.instance.getToken();
     } catch (e) {
-      debugPrint('push token: $e');
+      Diag.log('push', 'no Firebase token: $e');
     }
+    await _register(t);
   }
 
-  Future<void> _register(String token) async {
+  /// Firebase token (chat/alerts) and, on iPhone, the PushKit VoIP token (calls) are sent
+  /// independently: either one alone is still worth registering.
+  Future<void> _register(String? token) async {
     if (!Session.instance.signedIn) return;
-    Diag.log('push', 'registering token …${token.substring(token.length - 8)}');
-    try {
-      final body = <String, dynamic>{'fcm_token': token};
-      // iPhone: calls ring through Apple's VoIP push (PushKit), which needs its own token.
-      if (Platform.isIOS) {
+    final body = <String, dynamic>{};
+    if (token != null && token.isNotEmpty) body['fcm_token'] = token;
+    if (Platform.isIOS) {
+      try {
         final voip = await FlutterCallkitIncoming.getDevicePushTokenVoIP();
         if (voip != null && voip.toString().isNotEmpty) body['apns_voip_token'] = voip.toString();
+      } catch (e) {
+        Diag.log('push', 'no VoIP token: $e');
       }
+    }
+    if (body.isEmpty) { Diag.log('push', 'no push token to register yet'); return; }
+    Diag.log('push', 'registering ${body.keys.join('+')}');
+    try {
       await Session.instance.api.post('device/push-tokens', body);
     } on ApiException catch (e) {
       debugPrint('push token register: ${e.message}');

@@ -1,6 +1,7 @@
 import '../brand.dart';
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background/flutter_background.dart';
@@ -81,7 +82,17 @@ class NativeCall {
     }
   }
 
+  /// iPhone CallKit only accepts UUIDs as call ids; SIP call ids are random strings.
+  static final _uuidRe = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+  static String callKitId(String id) {
+    if (!Platform.isIOS || _uuidRe.hasMatch(id)) return id;
+    final r = Random.secure();
+    String h(int n) => List.generate(n, (_) => r.nextInt(16).toRadixString(16)).join();
+    return '${h(8)}-${h(4)}-4${h(3)}-${(8 + r.nextInt(4)).toRadixString(16)}${h(3)}-${h(12)}';
+  }
+
   Future<void> showIncoming({required String id, required String name, required String number}) async {
+    id = callKitId(id);
     // The push already put up Android's ringer for this call (app was in the background and its
     // line registered before Answer was tapped): keep that one instead of ringing twice.
     try {
@@ -127,6 +138,7 @@ class NativeCall {
   /// foreground service with microphone rights, so the mic keeps working once the screen locks
   /// (without it Android silences a background app's microphone and the far end hears nothing).
   Future<void> startOutgoing({required String id, required String name, required String number}) async {
+    id = callKitId(id);
     _shownId = id;
     try {
       await FlutterCallkitIncoming.startCall(CallKitParams(
@@ -158,6 +170,7 @@ class NativeCall {
   /// speaker | bluetooth | wired | earpiece | auto (headset if connected, else earpiece).
   /// True when Android's call (Telecom) took it; false = no Telecom call, route via WebRTC.
   Future<bool> setRoute(String route) async {
+    if (Platform.isIOS) return false; // iPhone: the plugin can't route; WebRTC sets AVAudioSession
     final id = _shownId;
     if (id == null) return false;
     try {
