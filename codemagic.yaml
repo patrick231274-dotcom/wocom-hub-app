@@ -37,8 +37,10 @@ workflows:
       flutter: 3.47.8
       xcode: latest
       cocoapods: default
-      groups:
-        - wocom_ios
+      vars:
+        APP_STORE_APPLE_ID: "6832255526"   # WOCOM HUB in App Store Connect (not secret)
+      # groups:            # add back when GOOGLE_SERVICE_INFO_PLIST is set up in Codemagic
+      #   - wocom_ios
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.wocom.app
