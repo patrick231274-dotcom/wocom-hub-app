@@ -51,7 +51,20 @@ class PushService {
   Future<void> init() async {
     if (_ready) return;
     try {
-      await Firebase.initializeApp();
+      // iPhone: Firebase config passed here instead of a bundled GoogleService-Info.plist
+      // (project wocom-hub, iOS app com.wocom.app). Android reads google-services.json.
+      if (Platform.isIOS) {
+        await Firebase.initializeApp(options: const FirebaseOptions(
+          apiKey: 'AIzaSyDLXVPgpgWV8HIRZkju2LGQKcrXxqiF9G4',
+          appId: '1:935090189192:ios:183bf6ff7a2b4e1f47c03d',
+          messagingSenderId: '935090189192',
+          projectId: 'wocom-hub',
+          storageBucket: 'wocom-hub.firebasestorage.app',
+          iosBundleId: 'com.wocom.app',
+        ));
+      } else {
+        await Firebase.initializeApp();
+      }
       FirebaseMessaging.onBackgroundMessage(wocomBackgroundMessage);
       await _local.initialize(
         settings: const InitializationSettings(android: AndroidInitializationSettings('ic_stat_wocom'), iOS: DarwinInitializationSettings()),
