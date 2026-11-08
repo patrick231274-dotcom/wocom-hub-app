@@ -17,6 +17,7 @@ import 'app_update.dart';
 import 'device_health.dart';
 import 'dial_plan.dart';
 import 'diag.dart';
+import '../widgets/diag_consent.dart';
 import 'hub.dart';
 import 'native_call.dart';
 import 'phone.dart';
@@ -159,9 +160,11 @@ class PushService {
       return;
     }
     if (type == 'diag') {
-      // WOCOM support asked for this phone's log.
-      Diag.log('diag', 'upload requested by WOCOM');
-      await Diag.instance.send(note: 'requested by WOCOM support');
+      // WOCOM support asked for this phone's log: send only if the user agrees.
+      Diag.log('diag', 'upload requested by WOCOM: asking the user');
+      await DiagConsent.mark();
+      final ctx = HomeScreen.scaffoldKey.currentContext;
+      if (ctx != null && ctx.mounted && Phone.instance.call == null) await DiagConsent.askIfRequested(ctx);
       return;
     }
     if (type == 'token_revoked') { await TechHub.instance.revoked(); return; }
@@ -264,9 +267,9 @@ Future<void> wocomBackgroundMessage(RemoteMessage m) async {
   }
   if (m.data['type'] == 'diag') {
     try {
-      await Session.instance.load();
-      Diag.log('diag', 'upload requested by WOCOM (app asleep)');
-      await Diag.instance.send(note: 'requested by WOCOM support (app was asleep)');
+      // Asleep: never upload silently. Remember it; the user is asked next time the app opens.
+      Diag.log('diag', 'upload requested by WOCOM (app asleep): will ask the user');
+      await DiagConsent.mark();
     } catch (e) {
       Diag.log('diag', 'upload failed: $e');
     }

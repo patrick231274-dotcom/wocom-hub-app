@@ -8,6 +8,7 @@ import '../services/api.dart';
 import '../services/app_update.dart';
 import '../services/device_health.dart';
 import '../services/diag.dart';
+import '../widgets/diag_consent.dart';
 import '../services/dial_plan.dart';
 import '../services/phone.dart';
 import '../services/push_service.dart';
@@ -70,6 +71,7 @@ class _EmployeeHomeState extends State<_EmployeeHome> with WidgetsBindingObserve
     TechHub.instance.addListener(_onDuty);
     WeLocation.instance.sync();
     PhotoQueue.instance.init();
+    if (mounted) DiagConsent.askIfRequested(context);
     ArrivalCheck.instance.start();
     TechHub.instance.leaveEvent.addListener(_onLeaveEvent);
     TechHub.instance.idleEvent.addListener(_onIdleEvent);

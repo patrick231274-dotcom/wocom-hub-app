@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -275,7 +276,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                       onTap: _sending ? null : _sendDiagnostics, action: const Icon(Icons.chevron_right, color: Color(0xFFB8B1C6))),
                   const Divider(height: 1, indent: 60, color: wocomLine),
                   _row(Icons.system_update_outlined, 'App version', _version.isEmpty ? '—' : _version,
-                      action: Brand.playStore ? null : _button(_checking ? 'Checking…' : 'Check', _checking ? null : _checkUpdates)),
+                      action: Brand.playStore || Platform.isIOS ? null : _button(_checking ? 'Checking…' : 'Check', _checking ? null : _checkUpdates)),
                   const Divider(height: 1, indent: 60, color: wocomLine),
                   _row(Icons.cloud_outlined, 'Service', 'push.wocomenterprise.com'),
                 ]),

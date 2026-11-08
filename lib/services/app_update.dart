@@ -42,7 +42,7 @@ class AppUpdate {
 
   /// The newer version on offer, or null when this build is current (or the check failed).
   Future<Map<String, dynamic>?> newer() async {
-    if (Brand.playStore) return null; // Play delivers updates
+    if (Brand.playStore || !Platform.isAndroid) return null; // Play / App Store deliver updates
     final info = await fetch();
     if (info == null) return null;
     final current = int.tryParse((await PackageInfo.fromPlatform()).buildNumber) ?? 0;

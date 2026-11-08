@@ -9,6 +9,7 @@ import '../services/app_update.dart';
 import '../services/device_health.dart';
 import '../services/emergency.dart';
 import '../services/diag.dart';
+import '../widgets/diag_consent.dart';
 import '../services/hub.dart';
 import '../services/names.dart';
 import '../services/push_service.dart';
@@ -66,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     DeviceHealth.instance.loadWake();
     if (!DeviceHealth.instance.batteryOk) await _askBatteryOnce();
     if (mounted) AppUpdate.instance.check(context);
+    if (mounted) DiagConsent.askIfRequested(context);
   }
 
   /// Once per install: ask Android to let the app run unrestricted, or calls may not wake the phone.
@@ -112,6 +114,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       Session.instance.refreshUser();
       DeviceHealth.instance.refresh();
       if (Phone.instance.call == null) AppUpdate.instance.check(context);
+      if (Phone.instance.call == null) DiagConsent.askIfRequested(context);
       if (Phone.instance.status != LineStatus.ready) Phone.instance.restart('app resumed');
       // Brought to the front during a call (e.g. after Answer on Android's call screen): show it.
       if (Phone.instance.call != null && !CallScreen.open) Phone.instance.poke();
