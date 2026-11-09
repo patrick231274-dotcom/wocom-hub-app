@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'api.dart';
+import 'diag.dart';
 
 const pushBaseUrl = 'https://push.wocomenterprise.com/api/v1';
 
@@ -96,8 +97,21 @@ class Session extends ChangeNotifier {
 
   Future<void> signedInWith(Map<String, dynamic> result) async {
     api.token = result['token'] as String;
-    user = result['user'] as Map<String, dynamic>?;
-    await _store.write(key: 'device_token', value: api.token);
+    final u = result['user'];
+    user = u is Map ? Map<String, dynamic>.from(u) : null;
+    // Save the sign-in, but never let a Keychain/Keystore hiccup strand the person on the
+    // sign-in screen: the server has already spent their one-time code.
+    try {
+      await _store.write(key: 'device_token', value: api.token);
+    } catch (e) {
+      Diag.log('session', 'saving sign-in failed, retrying: $e');
+      try {
+        await _store.delete(key: 'device_token');
+        await _store.write(key: 'device_token', value: api.token);
+      } catch (e2) {
+        Diag.log('session', 'saving sign-in failed again (signed in for this run only): $e2');
+      }
+    }
     notifyListeners();
   }
 

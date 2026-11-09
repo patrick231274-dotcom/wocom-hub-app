@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../brand.dart';
+import '../services/diag.dart';
 import '../services/api.dart';
 import '../services/session.dart';
 import '../theme.dart';
@@ -39,7 +40,10 @@ class _SignInScreenState extends State<SignInScreen> {
     try {
       await action();
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      Diag.log('sign-in', 'unexpected error: $e');
+      if (mounted) setState(() => _error = 'Something went wrong on this phone. Close the app, open it again and check whether you are signed in. If not, ask for a new code.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
