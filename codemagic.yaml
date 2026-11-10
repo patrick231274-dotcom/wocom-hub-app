@@ -76,6 +76,5 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
-        # Every build also goes to App Review and is released to all iPhone users once Apple approves it.
-        submit_to_app_store: true
-        release_type: AFTER_APPROVAL
+        # TestFlight only. Sending to App Review is a separate, deliberate step (owner decides after testing).
+        submit_to_app_store: false
