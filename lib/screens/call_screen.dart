@@ -156,7 +156,7 @@ class _CallScreenState extends State<CallScreen> {
                 child: Text(pill, style: const TextStyle(color: Color(0xFF1C1530), fontSize: 15, fontWeight: FontWeight.w900)),
               )),
               const SizedBox(height: 14),
-              if (inCall && _keypad) Expanded(child: Center(child: _tonePad())) else Expanded(
+              if (inCall && _keypad) Expanded(child: _tonePad(withHide: true)) else Expanded(
                 child: ShaderMask(
                   // fade the text out at the bottom edge instead of a hard box
                   shaderCallback: (r) => const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.white, Colors.white, Colors.transparent], stops: [0, 0.92, 1]).createShader(r),
@@ -266,6 +266,9 @@ class _CallScreenState extends State<CallScreen> {
     final sipName = RegExp(r'^[0-9+ ()\-]*$').hasMatch(p.remoteName) ? '' : p.remoteName;
     final waiting = p.call == null && p.autoAnswerPending;
     final title = p.call == null ? (waiting ? (p.pendingCaller ?? 'Incoming call') : 'Call ended') : (quick?.name ?? (sipName.isNotEmpty ? sipName : (Names.instance.lookup(p.remoteNumber) ?? p.remoteNumber)));
+    // Keypad open mid-call: drop the big picture and size the keys from what's left, so all four
+    // rows AND the End call button fit on small phones (iPhone 12/13 mini/SE, 667-844 pt).
+    final pad = _keypad && !ringingIn && p.call != null;
     final normal = Scaffold(
       backgroundColor: wocomPlum,
       body: Container(
@@ -277,21 +280,21 @@ class _CallScreenState extends State<CallScreen> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+          padding: EdgeInsets.fromLTRB(24, pad ? 12 : 32, 24, pad ? 12 : 32),
           child: Column(children: [
-            const SizedBox(height: 8),
+            if (!pad) const SizedBox(height: 8),
             // Breathing rings around the picture: lively while ringing/connecting, calm once connected.
-            PulseRing(
+            if (!pad) PulseRing(
               size: quick != null ? 128 : 92,
               active: !p.connected,
               child: quick != null
                   ? QuickDialBadge(dial: quick, size: 128)
                   : CircleAvatar(radius: 46, backgroundColor: Colors.white24, child: Text(title.isEmpty ? '?' : title[0].toUpperCase(), style: const TextStyle(fontSize: 38, color: Colors.white, fontWeight: FontWeight.w700))),
             ),
-            const SizedBox(height: 4),
-            Text(title.isEmpty ? 'Call' : title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700)),
+            if (!pad) const SizedBox(height: 4),
+            Text(title.isEmpty ? 'Call' : title, textAlign: TextAlign.center, maxLines: pad ? 1 : 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: pad ? 22 : 28, fontWeight: FontWeight.w700)),
             if (quick != null || title != p.remoteNumber) Text(quick != null && quick.emergency ? 'Your location is being sent to WOCOM' : p.remoteNumber, style: const TextStyle(color: Colors.white70, fontSize: 16)),
-            const SizedBox(height: 10),
+            SizedBox(height: pad ? 4 : 10),
             if (p.call == null && !waiting && p.endedNote != null)
               Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text(p.endedNote!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 17))),
             if (p.call != null || waiting) Text(waiting ? (p.status == LineStatus.ready ? 'Connecting your call…' : 'Connecting to the office line…') : _status, style: const TextStyle(color: Colors.white70, fontSize: 18, fontFeatures: [FontFeature.tabularFigures()])),
@@ -303,9 +306,11 @@ class _CallScreenState extends State<CallScreen> {
                   return c == null ? const SizedBox.shrink() : Flexible(child: SingleChildScrollView(child: _contextCard(c)));
                 },
               ),
-            const Spacer(),
-            if (_keypad && !ringingIn) _tonePad() else if (!ringingIn) _controls(p),
-            const SizedBox(height: 28),
+            if (pad) Expanded(child: _tonePad()) else ...[
+              const Spacer(),
+              if (!ringingIn) _controls(p),
+            ],
+            SizedBox(height: pad ? 8 : 28),
             if (waiting)
               _round(Icons.call_end, const Color(0xFFDC2626), 'Cancel', () { p.autoAnswerPending = false; Navigator.of(context).maybePop(); })
             else if (p.call == null)
@@ -314,6 +319,13 @@ class _CallScreenState extends State<CallScreen> {
               Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
                 _round(Icons.call_end, const Color(0xFFDC2626), 'Decline', p.hangup),
                 _round(Icons.call, const Color(0xFF16A34A), 'Answer', p.answer),
+              ])
+            else if (pad)
+              // Hide keypad sits beside End call, so both are always on screen.
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const SizedBox(width: 96),
+                _round(Icons.call_end, const Color(0xFFDC2626), 'End call', p.hangup),
+                SizedBox(width: 96, child: TextButton(onPressed: () => setState(() => _keypad = false), style: TextButton.styleFrom(foregroundColor: Colors.white), child: const Text('Hide\nkeypad', textAlign: TextAlign.center))),
               ])
             else
               _round(Icons.call_end, const Color(0xFFDC2626), 'End call', p.hangup),
@@ -431,33 +443,42 @@ class _CallScreenState extends State<CallScreen> {
     if (!ok && mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't transfer the call.")));
   }
 
-  Widget _tonePad() {
+  /// DTMF keypad. Fills the height it is given: keys shrink (down to 44 pt) on short screens
+  /// instead of pushing the rows below the bottom edge.
+  Widget _tonePad({bool withHide = false}) {
     const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
-    return Column(children: [
-      Text(_tones.isEmpty ? ' ' : _tones, style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 2)),
-      const SizedBox(height: 12),
-      for (var r = 0; r < 4; r++)
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          for (var c = 0; c < 3; c++)
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: SizedBox(
-                width: 64,
-                height: 64,
-                child: Material(
-                  color: Colors.white12,
-                  shape: const CircleBorder(),
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: () { Phone.instance.sendTone(keys[r * 3 + c]); setState(() => _tones += keys[r * 3 + c]); },
-                    child: Center(child: Text(keys[r * 3 + c], style: const TextStyle(color: Colors.white, fontSize: 26))),
+    return LayoutBuilder(builder: (context, box) {
+      final hideH = withHide ? 44.0 : 0.0;
+      final fromH = box.maxHeight.isFinite ? (box.maxHeight - 40 - hideH) / 4 - 12 : 64.0;
+      final fromW = box.maxWidth.isFinite ? box.maxWidth / 3 - 16 : 64.0;
+      final k = fromH < fromW ? fromH : fromW;
+      final key = k > 72 ? 72.0 : (k < 44 ? 44.0 : k);
+      return Column(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(height: 34, child: FittedBox(fit: BoxFit.scaleDown, child: Text(_tones.isEmpty ? ' ' : _tones, style: const TextStyle(color: Colors.white, fontSize: 24, letterSpacing: 2)))),
+        const SizedBox(height: 6),
+        for (var r = 0; r < 4; r++)
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            for (var c = 0; c < 3; c++)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: SizedBox(
+                  width: key,
+                  height: key,
+                  child: Material(
+                    color: Colors.white12,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () { Phone.instance.sendTone(keys[r * 3 + c]); setState(() => _tones += keys[r * 3 + c]); },
+                      child: Center(child: Text(keys[r * 3 + c], style: TextStyle(color: Colors.white, fontSize: key * 0.4))),
+                    ),
                   ),
                 ),
               ),
-            ),
-        ]),
-      TextButton(onPressed: () => setState(() => _keypad = false), style: TextButton.styleFrom(foregroundColor: Colors.white), child: const Text('Hide keypad')),
-    ]);
+          ]),
+        if (withHide) TextButton(onPressed: () => setState(() => _keypad = false), style: TextButton.styleFrom(foregroundColor: Colors.white), child: const Text('Hide keypad')),
+      ]);
+    });
   }
 
   Widget _toggle(IconData icon, String label, bool on, VoidCallback? onTap) => Column(mainAxisSize: MainAxisSize.min, children: [
