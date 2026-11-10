@@ -51,6 +51,10 @@ flutter:
     - assets/wocom-mark.png
     - assets/wocom-mark-white.png
     - assets/wocom-team.png
+    - assets/islandnet-logo.png
+    - assets/islandnet-logo-white.png
+    - assets/islandnet-mark.png
+    - assets/islandnet-mark-white.png
 
 dependency_overrides:
   flutter_callkit_incoming:

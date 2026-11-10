@@ -60,6 +60,9 @@ android {
         // WOCOM Employee App: own package so it installs beside WOCOM HUB; needs its own
         // google-services.json in android/app/src/employee/ before it can be built.
         create("employee") { dimension = "brand"; applicationId = "com.wocom.employee" }
+        // IslandNet Connect: Island Networks branded app on Google Play. Own package (own Play listing);
+        // needs android/app/src/islandnet/google-services.json (Firebase Android app com.wocom.islandnet).
+        create("islandnet") { dimension = "brand"; applicationId = "com.wocom.islandnet" }
     }
 
     buildTypes {

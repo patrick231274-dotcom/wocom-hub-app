@@ -78,3 +78,57 @@ workflows:
         submit_to_testflight: true
         # TestFlight only. Sending to App Review is a separate, deliberate step (owner decides after testing).
         submit_to_app_store: false
+
+  # IslandNet Connect (Island Networks branded app): same code, own bundle id, name and icon.
+  # Before the first run: App ID com.wocom.islandnet with Push Notifications (Apple Developer),
+  # an App Store Connect app record (set APP_STORE_APPLE_ID below), and a Firebase iOS app
+  # (put its app id in brands/islandnet.json → FIREBASE_IOS_APP_ID).
+  ios-islandnet-testflight:
+    name: IslandNet Connect iOS → TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: WOCOM ASC
+    environment:
+      flutter: 3.47.8
+      xcode: latest
+      cocoapods: default
+      vars:
+        APP_STORE_APPLE_ID: "TODO"   # IslandNet Connect in App Store Connect (not secret)
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.wocom.islandnet
+    triggering:
+      events: []
+    scripts:
+      - name: Brand the iPhone project as IslandNet Connect
+        script: |
+          sed -i "" "s/com\.wocom\.app/com.wocom.islandnet/g" ios/Runner.xcodeproj/project.pbxproj
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName IslandNet Connect" ios/Runner/Info.plist
+          cd ios/Runner/Assets.xcassets/AppIcon.appiconset
+          for f in *.png; do
+            s=$(sips -g pixelWidth "$f" | tail -1 | awk "{print \$2}")
+            sips -s format png -z "$s" "$s" "$CM_BUILD_DIR/brands/ios/islandnet/icon1024.png" --out "$f" >/dev/null
+          done
+      - name: Packages
+        script: flutter pub get
+      - name: CocoaPods
+        script: cd ios && pod install --repo-update
+      - name: Signing profiles
+        script: xcode-project use-profiles
+      - name: Build IPA
+        script: |
+          LAST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          BUILD=$(( ${LAST:-0} + 1 ))
+          flutter build ipa --release \
+            --dart-define-from-file=brands/islandnet.json \
+            --build-number=$BUILD \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false

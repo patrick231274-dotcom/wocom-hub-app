@@ -35,7 +35,7 @@ class AboutScreen extends StatelessWidget {
             if (version.isNotEmpty) Center(child: Padding(padding: const EdgeInsets.only(top: 4), child: Text(version, style: const TextStyle(color: wocomMuted, fontSize: 13)))),
             const SizedBox(height: 26),
             _card(children: const [
-              Text(Brand.isWocom ? '${Brand.name} is owned and operated by WOCOM Limited, a Jamaican company providing business phone and communications services.' : '${Brand.name} is powered by ${Brand.name}, a service of WOCOM Limited, a Jamaican company providing business phone and communications services.',
+              Text(Brand.isWocom ? '${Brand.name} is owned and operated by WOCOM Limited, a Jamaican company providing business phone and communications services.' : '${Brand.name} is provided by ${Brand.company}. Calls and messaging run on the WOCOM HUB platform, operated by WOCOM Limited, a Jamaican company providing business phone and communications services.',
                   style: TextStyle(fontSize: 15, height: 1.45, color: wocomInk)),
               SizedBox(height: 10),
               Text('© 2026 WOCOM Limited. All rights reserved.', style: TextStyle(fontSize: 13.5, color: wocomMuted)),

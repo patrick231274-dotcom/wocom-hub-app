@@ -118,7 +118,7 @@ class BrandWordmark extends StatelessWidget {
       SizedBox(width: fontSize * 0.2),
       Text.rich(
         TextSpan(children: [
-          TextSpan(text: Brand.isWocom ? 'WOCOM ' : Brand.name, style: const TextStyle(color: Color(0xFF6B2196))),
+          TextSpan(text: Brand.isWocom ? 'WOCOM ' : Brand.name, style: TextStyle(color: Brand.isWocom ? const Color(0xFF6B2196) : wocomDeep)),
           if (Brand.isWocom) const TextSpan(text: 'HUB', style: TextStyle(color: Color(0xFF008A3A))),
         ]),
         style: style,
