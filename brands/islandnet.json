@@ -10,7 +10,7 @@
   "BRAND_UPDATE_URL": "https://push.wocomenterprise.com/downloads/version-islandnet.json",
   "PLAY_STORE": "true",
   "IOS_BUNDLE_ID": "com.wocom.islandnet",
-  "FIREBASE_IOS_APP_ID": "",
+  "FIREBASE_IOS_APP_ID": "1:935090189192:ios:34f726d904f1009c47c03d",
   "BRAND_DARK_HEX": "#3D1340",
   "BRAND_ACCENT": 4286197624,
   "BRAND_DEEP": 4285213289,
