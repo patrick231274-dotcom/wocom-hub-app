@@ -29,6 +29,20 @@ class NativeCall {
   /// Called when the person taps Decline.
   VoidCallback? onDecline;
 
+  /// iPhone: the call plugin must not configure the audio session (WebRTC does, with voiceChat,
+  /// 48 kHz, 20 ms); if it ever does, these are the values it uses.
+  static const iosAudio = IOSParams(
+    configureAudioSession: false,
+    audioSessionMode: 'voiceChat',
+    audioSessionActive: true,
+    audioSessionPreferredSampleRate: 48000.0,
+    audioSessionPreferredIOBufferDuration: 0.02,
+    supportsDTMF: true,
+    supportsHolding: true,
+    supportsVideo: false,
+    handleType: 'generic',
+  );
+
   Future<void> init() async {
     _events ??= FlutterCallkitIncoming.onEvent.listen((e) {
       if (e is! CallEventActionCallToggleHold) Diag.log('native', e.runtimeType.toString());
@@ -44,6 +58,8 @@ class NativeCall {
           // iPhone: the VoIP push put up the ringer natively; connect the line so the call lands.
           _shownId = callKitParams.id;
           Phone.instance.pushIncoming(callKitParams.id ?? '', callKitParams.nameCaller ?? '');
+        case CallEventActionCallToggleAudioSession(:final isActive) when Platform.isIOS:
+          if (isActive) Diag.iosAudioStats('activated');
         case CallEventActionDidUpdateDevicePushTokenVoip() when Platform.isIOS:
           PushService.instance.registerToken();
         default:
@@ -116,6 +132,7 @@ class NativeCall {
       type: 0,
       duration: 45000,
       missedCallNotification: const NotificationParams(showNotification: true, isShowCallback: true, subtitle: 'Missed call', callbackText: 'Call back'),
+      ios: iosAudio,
       android: const AndroidParams(
         isCustomNotification: true,
         isShowLogo: false,
@@ -147,6 +164,7 @@ class NativeCall {
         appName: Brand.name,
         handle: name.isEmpty ? 'Outgoing call' : prettyNumber(number),
         type: 0,
+        ios: iosAudio,
         android: const AndroidParams(
           isCustomNotification: true,
           isShowLogo: false,

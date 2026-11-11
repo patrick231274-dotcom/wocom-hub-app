@@ -494,6 +494,10 @@ class Phone extends ChangeNotifier implements SipUaHelperListener {
         if (connectedAt == null) {
           // Audio just started: force the route we show (earpiece unless Speaker is on).
           Future.delayed(const Duration(milliseconds: 600), () { if (call != null) applyAudioRoute(); });
+          // iPhone: log the audio session now and every 10 s of the call (hiss / growing delay checks).
+          Diag.iosAudioStats('connected');
+          _audioStats?.cancel();
+          _audioStats = Timer.periodic(const Duration(seconds: 10), (_) => Diag.iosAudioStats('in call'));
         }
         connectedAt ??= DateTime.now();
         break;
@@ -518,7 +522,11 @@ class Phone extends ChangeNotifier implements SipUaHelperListener {
   @override
   void onNewReinvite(ReInvite event) {}
 
+  Timer? _audioStats;
+
   void _endCall() {
+    _audioStats?.cancel();
+    _audioStats = null;
     _stopRinging();
     NativeCall.instance.end();
     _dialWatch?.cancel();

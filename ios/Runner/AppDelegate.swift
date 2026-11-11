@@ -36,6 +36,16 @@ import WebRTC
     // connect with no sound.
     RTCAudioSession.sharedInstance().useManualAudio = true
     RTCAudioSession.sharedInstance().isAudioEnabled = false
+    // Only WebRTC configures the call's audio session, with its voice-call settings: voiceChat mode,
+    // 48 kHz, 20 ms IO buffer. (The call plugin used to force mode default, 44.1 kHz and a 5 ms
+    // buffer after WebRTC had the session; on iPhone 12 that gave hiss and a growing delay.)
+    let rtc = RTCAudioSessionConfiguration.webRTC()
+    rtc.category = AVAudioSession.Category.playAndRecord.rawValue
+    rtc.categoryOptions = [.allowBluetooth, .allowBluetoothA2DP, .duckOthers]
+    rtc.mode = AVAudioSession.Mode.voiceChat.rawValue
+    rtc.sampleRate = 48000
+    rtc.ioBufferDuration = 0.02
+    RTCAudioSessionConfiguration.setWebRTC(rtc)
     #endif
     let registry = PKPushRegistry(queue: DispatchQueue.main)
     registry.delegate = self
@@ -46,6 +56,25 @@ import WebRTC
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    // The app log reads the live audio session (sample rate, IO buffer, latency, mode, route).
+    if let reg = engineBridge.pluginRegistry.registrar(forPlugin: "WocomAudioStats") {
+      FlutterMethodChannel(name: "wocom/ios-audio", binaryMessenger: reg.messenger()).setMethodCallHandler { call, result in
+        guard call.method == "stats" else { result(FlutterMethodNotImplemented); return }
+        let s = AVAudioSession.sharedInstance()
+        let route = s.currentRoute
+        result([
+          "sampleRate": s.sampleRate,
+          "preferredSampleRate": s.preferredSampleRate,
+          "ioBufferDuration": s.ioBufferDuration,
+          "inputLatency": s.inputLatency,
+          "outputLatency": s.outputLatency,
+          "mode": s.mode.rawValue,
+          "category": s.category.rawValue,
+          "inputs": route.inputs.map { "\($0.portType.rawValue):\($0.portName)" }.joined(separator: ","),
+          "outputs": route.outputs.map { "\($0.portType.rawValue):\($0.portName)" }.joined(separator: ","),
+        ])
+      }
+    }
   }
 
   // MARK: PushKit
@@ -90,6 +119,11 @@ import WebRTC
     data.missedNotificationSubtitle = "Missed call"
     data.missedNotificationCallbackText = "Call back"
     data.extra = ["call_uuid": id, "caller_number": number, "caller_name": name, "platform": "ios"]
+    // The plugin must not configure the audio session (WebRTC does); if it ever does, use call settings.
+    data.configureAudioSession = false
+    data.audioSessionMode = "voiceChat"
+    data.audioSessionPreferredSampleRate = 48000.0
+    data.audioSessionPreferredIOBufferDuration = 0.02
     plugin.showCallkitIncoming(data, fromPushKit: true) { completion() }
   }
 
@@ -104,8 +138,13 @@ import WebRTC
   // CallKit owns the audio session during a call: hand it to WebRTC when iOS activates it.
   func didActivateAudioSession(_ audioSession: AVAudioSession) {
     #if canImport(WebRTC)
-    RTCAudioSession.sharedInstance().audioSessionDidActivate(audioSession)
-    RTCAudioSession.sharedInstance().isAudioEnabled = true
+    let rtc = RTCAudioSession.sharedInstance()
+    rtc.audioSessionDidActivate(audioSession)
+    // Apply WebRTC's call settings to the session CallKit just activated (nothing else touches it now).
+    rtc.lockForConfiguration()
+    do { try rtc.setConfiguration(RTCAudioSessionConfiguration.webRTC()) } catch { NSLog("WOCOM audio: setConfiguration failed: \(error)") }
+    rtc.unlockForConfiguration()
+    rtc.isAudioEnabled = true
     #endif
   }
 

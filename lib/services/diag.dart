@@ -5,6 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter/widgets.dart' show FlutterError;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -46,6 +47,24 @@ class Diag {
   }
 
   Future<void> flush() async {}
+
+  static const _iosAudio = MethodChannel('wocom/ios-audio');
+
+  /// iPhone: logs the live audio session (sample rate, IO buffer, input/output latency, mode,
+  /// category, route) so call-audio problems such as hiss or a growing delay can be read.
+  static Future<void> iosAudioStats(String when) async {
+    if (!Platform.isIOS) return;
+    try {
+      final m = await _iosAudio.invokeMapMethod<String, dynamic>('stats');
+      if (m == null) return;
+      String ms(Object? v) => v is num ? '${(v * 1000).toStringAsFixed(1)}ms' : '?';
+      log('audio', '$when: ${m['sampleRate']}Hz (pref ${m['preferredSampleRate']}) io=${ms(m['ioBufferDuration'])} '
+          'in=${ms(m['inputLatency'])} out=${ms(m['outputLatency'])} mode=${m['mode']} cat=${m['category']} '
+          'route in=${m['inputs']} out=${m['outputs']}');
+    } catch (e) {
+      log('audio', '$when: stats failed: $e');
+    }
+  }
 
   static void log(String area, String message) {
     final t = DateTime.now();

@@ -671,9 +671,8 @@ public class SwiftFlutterCallkitIncomingPlugin: NSObject, FlutterPlugin, CXProvi
             return
         }
         self.configureAudioSession()
-        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(1200)) {
-            self.configureAudioSession()
-        }
+        // WOCOM: no second configure 1.2 s later. It re-applied mode/sample rate/IO buffer after
+        // WebRTC had taken the session (iPhone 12: hiss and growing delay).
 
 
         call.hasConnectDidChange = { [weak self] in

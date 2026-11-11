@@ -315,6 +315,7 @@ Future<void> showRinger(String id, String nameCaller, String handle) => FlutterC
     duration: 45000,
     extra: {'from_push': true},
     missedCallNotification: const NotificationParams(showNotification: true, isShowCallback: true, subtitle: 'Missed call', callbackText: 'Call back'),
+    ios: NativeCall.iosAudio,
     android: const AndroidParams(
       isCustomNotification: true,
       isShowLogo: false,
