@@ -196,11 +196,11 @@ public class Call: NSObject {
         self.supportsUngrouping = true
         self.includesCallsInRecents = true
         self.ringtonePath = ""
-        self.configureAudioSession = true
-        self.audioSessionMode = ""
+        self.configureAudioSession = false  // WOCOM: WebRTC owns the session
+        self.audioSessionMode = "voiceChat"
         self.audioSessionActive = true
-        self.audioSessionPreferredSampleRate = 44100.0
-        self.audioSessionPreferredIOBufferDuration = 0.005
+        self.audioSessionPreferredSampleRate = 48000.0
+        self.audioSessionPreferredIOBufferDuration = 0.02
 
         self.isShowMissedCallNotification = true
         self.missedNotificationSubtitle = "Missed Call"
@@ -247,11 +247,11 @@ public class Call: NSObject {
             self.supportsUngrouping = ios["supportsUngrouping"] as? Bool ?? true
             self.includesCallsInRecents = ios["includesCallsInRecents"] as? Bool ?? true
             self.ringtonePath = ios["ringtonePath"] as? String ?? ""
-            self.configureAudioSession = ios["configureAudioSession"] as? Bool ?? true
-            self.audioSessionMode = ios["audioSessionMode"] as? String ?? ""
+            self.configureAudioSession = ios["configureAudioSession"] as? Bool ?? false
+            self.audioSessionMode = ios["audioSessionMode"] as? String ?? "voiceChat"
             self.audioSessionActive = ios["audioSessionActive"] as? Bool ?? true
-            self.audioSessionPreferredSampleRate = ios["audioSessionPreferredSampleRate"] as? Double ?? 44100.0
-            self.audioSessionPreferredIOBufferDuration = ios["audioSessionPreferredIOBufferDuration"] as? Double ?? 0.005
+            self.audioSessionPreferredSampleRate = ios["audioSessionPreferredSampleRate"] as? Double ?? 48000.0
+            self.audioSessionPreferredIOBufferDuration = ios["audioSessionPreferredIOBufferDuration"] as? Double ?? 0.02
         }else {
             self.iconName = args["iconName"] as? String ?? "CallKitLogo"
             self.handleType = args["handleType"] as? String ?? ""
@@ -265,11 +265,11 @@ public class Call: NSObject {
             self.supportsUngrouping = args["supportsUngrouping"] as? Bool ?? true
             self.includesCallsInRecents = args["includesCallsInRecents"] as? Bool ?? true
             self.ringtonePath = args["ringtonePath"] as? String ?? ""
-            self.configureAudioSession = args["configureAudioSession"] as? Bool ?? true
-            self.audioSessionMode = args["audioSessionMode"] as? String ?? ""
+            self.configureAudioSession = args["configureAudioSession"] as? Bool ?? false
+            self.audioSessionMode = args["audioSessionMode"] as? String ?? "voiceChat"
             self.audioSessionActive = args["audioSessionActive"] as? Bool ?? true
-            self.audioSessionPreferredSampleRate = args["audioSessionPreferredSampleRate"] as? Double ?? 44100.0
-            self.audioSessionPreferredIOBufferDuration = args["audioSessionPreferredIOBufferDuration"] as? Double ?? 0.005
+            self.audioSessionPreferredSampleRate = args["audioSessionPreferredSampleRate"] as? Double ?? 48000.0
+            self.audioSessionPreferredIOBufferDuration = args["audioSessionPreferredIOBufferDuration"] as? Double ?? 0.02
         }
         if let missedCallNotification = args["missedCallNotification"] as? [String: Any] {
             self.isShowMissedCallNotification = missedCallNotification["showNotification"] as? Bool ?? true

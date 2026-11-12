@@ -136,7 +136,8 @@ public class SwiftFlutterCallkitIncomingPlugin: NSObject, FlutterPlugin, CXProvi
                 self.endCall(self.data!)
             }else{
                 if let getArgs = args as? [String: Any] {
-                    self.data = Data(args: getArgs)
+                    // WOCOM: Dart sends only {'id'}; keep the call's audio settings from the existing data.
+                    self.data = self.dataKeepingAudio(getArgs)
                     self.endCall(self.data!)
                 }
             }
@@ -185,7 +186,10 @@ public class SwiftFlutterCallkitIncomingPlugin: NSObject, FlutterPlugin, CXProvi
                 self.connectedCall(self.data!)
             }else{
                     if let getArgs = args as? [String: Any] {
-                    self.data = Data(args: getArgs)
+                    // WOCOM: Dart sends only {'id'}. Rebuilding data from that map reset
+                    // configureAudioSession=true / mode default / 44.1 kHz / 5 ms, which the next
+                    // didActivate (hold/resume, interruption) then forced over WebRTC's settings.
+                    self.data = self.dataKeepingAudio(getArgs)
                     self.connectedCall(self.data!)
                     }
             }
@@ -571,23 +575,36 @@ public class SwiftFlutterCallkitIncomingPlugin: NSObject, FlutterPlugin, CXProvi
         NotificationCenter.default.post(name: AVAudioSession.interruptionNotification, object: self, userInfo: userInfo)
     }
     
+    /// WOCOM: new Data for this call id that keeps the audio-session settings of the current data.
+    private func dataKeepingAudio(_ args: [String: Any]) -> Data {
+        let d = Data(args: args)
+        if let prev = self.data {
+            d.configureAudioSession = prev.configureAudioSession
+            d.audioSessionMode = prev.audioSessionMode
+            d.audioSessionActive = prev.audioSessionActive
+            d.audioSessionPreferredSampleRate = prev.audioSessionPreferredSampleRate
+            d.audioSessionPreferredIOBufferDuration = prev.audioSessionPreferredIOBufferDuration
+        }
+        return d
+    }
+
     func configureAudioSession(){
-        if data?.configureAudioSession != false {
-            let session = AVAudioSession.sharedInstance()
-            do{
-                try session.setCategory(AVAudioSession.Category.playAndRecord, options: [
-                    .allowBluetoothA2DP,
-                    .duckOthers,
-                    .allowBluetooth,
-                ])
-                
-                try session.setMode(self.getAudioSessionMode(data?.audioSessionMode))
-                try session.setActive(data?.audioSessionActive ?? true)
-                try session.setPreferredSampleRate(data?.audioSessionPreferredSampleRate ?? 44100.0)
-                try session.setPreferredIOBufferDuration(data?.audioSessionPreferredIOBufferDuration ?? 0.005)
-            }catch{
-                print(error)
-            }
+        // WOCOM: only when the current call's data explicitly asks for it (WebRTC owns the session).
+        guard let data = self.data, data.configureAudioSession else { return }
+        let session = AVAudioSession.sharedInstance()
+        do{
+            try session.setCategory(AVAudioSession.Category.playAndRecord, options: [
+                .allowBluetoothA2DP,
+                .duckOthers,
+                .allowBluetooth,
+            ])
+
+            try session.setMode(self.getAudioSessionMode(data.audioSessionMode))
+            try session.setActive(data.audioSessionActive)
+            try session.setPreferredSampleRate(data.audioSessionPreferredSampleRate)
+            try session.setPreferredIOBufferDuration(data.audioSessionPreferredIOBufferDuration)
+        }catch{
+            print(error)
         }
     }
     
