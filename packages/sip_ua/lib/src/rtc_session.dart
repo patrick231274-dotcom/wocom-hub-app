@@ -763,11 +763,13 @@ class RTCSession extends EventManager implements Owner {
         }
 
         // Check Session Status.
-        if (_state == RtcSessionState.none ||
-            _state == RtcSessionState.inviteSent) {
-          _is_canceled = true;
-          _cancel_reason = cancel_reason;
-        } else if (_state == RtcSessionState.provisionalResponse) {
+        // WOCOM: always remember that the user cancelled. The CANCEL below is only sent when the current INVITE
+        // transaction has had a provisional response; right after a 401/407 the INVITE has just been re-sent and has
+        // none yet, so the CANCEL is silently skipped. With the flag set, the next 1xx sends the CANCEL and a 2xx that
+        // crosses it is answered with ACK + BYE (see _receiveInviteResponse), so the call never lives on unanswered.
+        _is_canceled = true;
+        _cancel_reason = cancel_reason;
+        if (_state == RtcSessionState.provisionalResponse) {
           _request.cancel(cancel_reason ?? '');
         }
 
