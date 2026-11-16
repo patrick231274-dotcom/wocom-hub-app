@@ -62,6 +62,30 @@ class _EmployeeHomeState extends State<_EmployeeHome> with WidgetsBindingObserve
     _start();
   }
 
+  /// Prominent disclosure (Google Play User Data policy) before the location permission prompt.
+  Future<bool> _locationDisclosure() async {
+    if (!mounted) return false;
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (d) => AlertDialog(
+        icon: const Icon(Icons.location_on_outlined, size: 36),
+        title: const Text('Share your location while On duty'),
+        content: const Text(
+          'WE App collects your location while you are On duty, even when the app is closed or not in use, '
+          'so the office can see where you are and send the nearest engineer to a job.\n\n'
+          'Your location goes only to WOCOM Tech Hub. It is never sold or used for ads. '
+          'It stops as soon as you go Off duty, and a notification shows while it is on.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Not now')),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Continue')),
+        ],
+      ),
+    );
+    return ok == true;
+  }
+
   Future<void> _start() async {
     await [Permission.microphone, Permission.notification, Permission.bluetoothConnect].request();
     await PushService.instance.init();
@@ -69,6 +93,7 @@ class _EmployeeHomeState extends State<_EmployeeHome> with WidgetsBindingObserve
     Phone.instance.watchNetwork();
     Phone.instance.addListener(_onLine);
     TechHub.instance.addListener(_onDuty);
+    WeLocation.instance.askDisclosure = _locationDisclosure;
     WeLocation.instance.sync();
     PhotoQueue.instance.init();
     if (mounted) DiagConsent.askIfRequested(context);

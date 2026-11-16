@@ -18,6 +18,10 @@ class WeLocation extends ChangeNotifier {
   final List<Map<String, dynamic>> _pending = [];
   DateTime _lastSent = DateTime.fromMillisecondsSinceEpoch(0);
   bool sharing = false;
+
+  /// Google Play "prominent disclosure": shown by the app (EmployeeHome) before Android's location prompt.
+  /// Returns true when the employee chose Continue. Null (tests, no UI yet) = don't ask now.
+  Future<bool> Function()? askDisclosure;
   String? problem; // why it is not sharing (permission, GPS off), shown in the app
 
   /// Start or stop to match the engineer's duty state. Safe to call often.
@@ -34,7 +38,11 @@ class WeLocation extends ChangeNotifier {
     if (_sub != null) return;
     if (!await Geolocator.isLocationServiceEnabled()) { problem = 'Location is switched off on this phone.'; sharing = false; notifyListeners(); return; }
     var perm = await Geolocator.checkPermission();
-    if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
+    if (perm == LocationPermission.denied) {
+      final ok = await askDisclosure?.call() ?? false;
+      if (!ok) { problem = 'Location is off for WE App. Go Off duty and On duty again to allow it.'; sharing = false; notifyListeners(); return; }
+      perm = await Geolocator.requestPermission();
+    }
     if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) { problem = 'Allow location for WE App so the office can see you while on duty.'; sharing = false; notifyListeners(); return; }
     problem = null;
     final settings = AndroidSettings(
