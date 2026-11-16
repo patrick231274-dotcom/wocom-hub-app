@@ -10,6 +10,9 @@ import '../theme.dart';
 import '../widgets/ui.dart';
 
 /// About WOCOM HUB: who owns it and how to reach support.
+/// WE App (staff) privacy policy, incl. On-duty location and #delete.
+const weprivacy = 'https://proposal.wocomenterprise.com/legal/we-privacy';
+
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
@@ -65,7 +68,7 @@ class AboutScreen extends StatelessWidget {
             const SizedBox(height: 14),
             _section('Company'),
             _row(context, Icons.business_outlined, 'About us', 'Who WOCOM is and what we do', () => _open(context, Uri.parse('https://wocomja.com/about.php'))),
-            _row(context, Icons.privacy_tip_outlined, 'Privacy policy', 'How WOCOM handles your information', () => _open(context, Uri.parse('https://wocomja.com/privacy-policy.php'))),
+            _row(context, Icons.privacy_tip_outlined, 'Privacy policy', 'How WOCOM handles your information', () => _open(context, Uri.parse(Brand.isEmployee ? weprivacy : 'https://wocomja.com/privacy-policy.php'))),
             const SizedBox(height: 18),
             const Center(child: Text('Made in Jamaica', style: TextStyle(fontSize: 12.5, letterSpacing: 1, fontWeight: FontWeight.w700, color: Color(0xFF8A8299)))),
           ]),

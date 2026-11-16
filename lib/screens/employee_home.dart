@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../brand.dart';
 import '../services/api.dart';
@@ -78,6 +79,7 @@ class _EmployeeHomeState extends State<_EmployeeHome> with WidgetsBindingObserve
           'It stops as soon as you go Off duty, and a notification shows while it is on.',
         ),
         actions: [
+          TextButton(onPressed: () => launchUrl(Uri.parse(weprivacy), mode: LaunchMode.externalApplication), child: const Text('Privacy policy')),
           TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Not now')),
           FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Continue')),
         ],
