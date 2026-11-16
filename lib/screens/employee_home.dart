@@ -319,7 +319,7 @@ class _EmployeeSettingsState extends State<_EmployeeSettings> {
     final h = DeviceHealth.instance;
     return Scaffold(
       backgroundColor: wocomBg,
-      appBar: AppBar(backgroundColor: wocomPlum, foregroundColor: Colors.white, title: const Text('Settings')),
+      appBar: AppBar(backgroundColor: wocomButton, foregroundColor: Colors.white, title: const Text('Settings')),
       body: ListView(padding: const EdgeInsets.all(14), children: [
         _card('Calls and alerts', [
           ListTile(
@@ -366,7 +366,8 @@ class _EmployeeSettingsState extends State<_EmployeeSettings> {
               if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err ?? 'Sent. Thank you.')));
             },
           ),
-          ListTile(
+          // Google Play build: Play delivers updates.
+          if (!Brand.playStore) ListTile(
             leading: const Icon(Icons.system_update_outlined, color: wocomDeep),
             title: const Text('Check for updates'),
             subtitle: Text('Version ${PushApi.appVersion}'),
@@ -921,7 +922,7 @@ class _PhoneContactsPageState extends State<_PhoneContactsPage> {
   String _q = '';
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: wocomPlum, foregroundColor: Colors.white, title: const Text('Phone contacts')),
+        appBar: AppBar(backgroundColor: wocomButton, foregroundColor: Colors.white, title: const Text('Phone contacts')),
         body: Column(children: [
           Padding(
             padding: const EdgeInsets.all(12),

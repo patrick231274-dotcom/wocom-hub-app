@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/services.dart';
+import 'package:audio_session/audio_session.dart' show AndroidAudioAttributes, AndroidAudioContentType, AndroidAudioUsage;
 import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
+import 'package:just_audio/just_audio.dart' as ja;
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:sip_ua/sip_ua.dart';
 import 'techhub.dart';
@@ -59,7 +62,16 @@ class Phone extends ChangeNotifier implements SipUaHelperListener {
 
   /// The server says the call is gone (answered elsewhere or the caller hung up) before it reached us.
   void pushCancelled(String callId) {
-    if (call != null) return;
+    // A call that already reached the app over SIP but is still ringing: the PBX says it is gone (answered at
+    // another phone, or the caller hung up). If its SIP CANCEL never got here, end it now rather than leave the
+    // caller's name on screen with only Hang up to press.
+    if (call != null) {
+      if (_isRingingIn && (callId.isEmpty || _ringPushId == null || callId == _ringPushId)) {
+        dropRinging('cancelled by the server');
+      }
+      return;
+    }
+    if (callId.isNotEmpty) _cancelledIds[callId] = DateTime.now();
     if (_pendingCallId != null && callId.isNotEmpty && _pendingCallId != callId) return;
     if (_autoAnswerPending) {
       Diag.log('call', 'cancelled before it reached this phone ($callId)');
@@ -72,6 +84,13 @@ class Phone extends ChangeNotifier implements SipUaHelperListener {
   /// A push says a call is on its way (app was in the background): get the line registered now,
   /// before Answer is tapped, so the server can hand us the call while it is still ringing.
   void pushIncoming(String callId, [String caller = '']) {
+    // The cancel can overtake the wake-up push: don't ring for a call that is already gone.
+    final gone = _cancelledIds[callId];
+    if (callId.isNotEmpty && gone != null && DateTime.now().difference(gone) < const Duration(minutes: 2)) {
+      Diag.log('call', 'push: call $callId was already cancelled, not ringing');
+      NativeCall.instance.end();
+      return;
+    }
     _pendingCallId = callId;
     if (caller.isNotEmpty) pendingCaller = caller;
     endedNote = null;
@@ -274,6 +293,60 @@ class Phone extends ChangeNotifier implements SipUaHelperListener {
     c.answer(_ua.buildCallOptions(true));
   }
 
+  /// Push call ids the server cancelled before the call reached the app (newest 2 minutes matter).
+  final Map<String, DateTime> _cancelledIds = {};
+  /// The push call id of the call ringing now (the PBX's id, used to match a push cancel to it).
+  String? _ringPushId;
+  Timer? _ringWatch;
+  DateTime? _ringStartedAt;
+  /// How long the current incoming call has been ringing here (zero when none).
+  Duration get ringingFor => (_isRingingIn && _ringStartedAt != null) ? DateTime.now().difference(_ringStartedAt!) : Duration.zero;
+
+  bool get _isRingingIn => call != null && incoming && connectedAt == null && !connected;
+
+  /// End a call that is still ringing here, everywhere at once: the SIP side, Android's call screen and
+  /// notification, the ringtone, audio and the in-app call window (which closes when [call] goes null).
+  void dropRinging(String why, {bool elsewhere = true}) {
+    final c = call;
+    if (c == null || !_isRingingIn) return;
+    Diag.log('call', 'ringing call dropped: $why');
+    endedNote = elsewhere ? 'Answered on another phone, or the caller hung up' : 'Missed call';
+    try { c.hangup({'status_code': 487}); } catch (_) {}
+    _endCall();
+  }
+
+  // -- Ringback (from WOCOM Prepaid 1.0.36+125) --------------------------------------------------------------
+  // Office extensions answer 180 Ringing with no early audio, so the caller heard silence. Ring in the caller's
+  // ear on 180/183 unless the far end is already sending audio; stop on answer, failure or hang-up.
+  ja.AudioPlayer? _ringback;
+  bool _ringbackOn = false;
+  bool _remoteAudio = false;
+
+  /// Played as CALL audio (voice communication), not media: it goes where the voice goes (earpiece, speaker,
+  /// Bluetooth) at the call volume.
+  static const _callTone = AndroidAudioAttributes(contentType: AndroidAudioContentType.sonification, usage: AndroidAudioUsage.voiceCommunication);
+
+  Future<void> _startRingback() async {
+    if (_ringbackOn) return;
+    _ringbackOn = true;
+    try {
+      final p = _ringback ??= ja.AudioPlayer(handleInterruptions: false, handleAudioSessionActivation: false);
+      if (Platform.isAndroid) await p.setAndroidAudioAttributes(_callTone);
+      await p.setAsset('assets/sounds/ringback.wav');
+      await p.setLoopMode(ja.LoopMode.one);
+      await p.setVolume(0.8);
+      if (_ringbackOn) unawaited(p.play()); // play() only completes when the loop is stopped
+    } catch (e) {
+      Diag.log('call', 'ringback: $e');
+    }
+  }
+
+  Future<void> _stopRingback() async {
+    if (!_ringbackOn) return;
+    _ringbackOn = false;
+    try { await _ringback?.stop(); } catch (_) {}
+  }
+
   void hangup() {
     final c = call;
     if (c == null) return;
@@ -304,12 +377,33 @@ class Phone extends ChangeNotifier implements SipUaHelperListener {
 
   /// From the in-call audio picker.
   Future<void> chooseRoute(String route) async {
+    _pickedRoute = true;
     speaker = route == 'speaker';
     await applyAudioRoute(route);
     notifyListeners();
   }
 
+  /// The person chose earpiece/speaker/Bluetooth during this call: stop moving the call to a headset by ourselves.
+  bool _pickedRoute = false;
+  Timer? _routeWatch;
+
+  /// Android, during a call: notice a Bluetooth headset or car kit that connects mid-call and move the call to it.
+  void _watchRoutes() {
+    _routeWatch?.cancel();
+    if (!Platform.isAndroid) return;
+    _routeWatch = Timer.periodic(const Duration(seconds: 3), (_) async {
+      if (call == null) { _routeWatch?.cancel(); _routeWatch = null; return; }
+      final hadBt = audioRoutes.contains('bluetooth');
+      await refreshRoutes();
+      if (!hadBt && audioRoutes.contains('bluetooth') && !_pickedRoute && !speaker && audioRoute != 'bluetooth') {
+        Diag.log('audio', 'Bluetooth connected during the call: moving the call to it');
+        await applyAudioRoute('bluetooth');
+      }
+    });
+  }
+
   Future<void> refreshRoutes() async {
+    final before = '$audioRoute $audioRoutes';
     final r = await NativeCall.instance.routes();
     if (r != null) {
       audioRoute = (r['current'] ?? 'earpiece').toString();
@@ -322,8 +416,10 @@ class Phone extends ChangeNotifier implements SipUaHelperListener {
       } catch (_) {}
       audioRoute = speaker ? 'speaker' : (audioRoutes.contains('bluetooth') ? 'bluetooth' : 'earpiece');
     }
-    Diag.log('audio', 'route $audioRoute of $audioRoutes');
-    notifyListeners();
+    if ('$audioRoute $audioRoutes' != before) {
+      Diag.log('audio', 'route $audioRoute of $audioRoutes${bluetoothName == null ? '' : ' ($bluetoothName)'}');
+      notifyListeners();
+    }
   }
 
   /// Speaker when chosen; otherwise a Bluetooth headset if one is connected, then a wired
@@ -453,6 +549,11 @@ class Phone extends ChangeNotifier implements SipUaHelperListener {
       connectedAt = null;
       notifyListeners();
       if (incoming) {
+        _ringPushId = _pendingCallId;
+        _ringStartedAt = DateTime.now();
+        // Safety net: if neither a SIP CANCEL nor a push cancel ever arrives, don't ring for ever.
+        _ringWatch?.cancel();
+        _ringWatch = Timer(const Duration(seconds: 60), () { if (identical(call, c) && _isRingingIn) dropRinging('no answer after 60 s', elsewhere: false); });
         _pendingCallId = null;
         pendingCaller = null;
         endedNote = null;
@@ -487,13 +588,33 @@ class Phone extends ChangeNotifier implements SipUaHelperListener {
       case CallStateEnum.UNHOLD:
         held = false;
         break;
+      case CallStateEnum.PROGRESS:
+        // 180/183 on a call we placed: ring in our ear unless early audio is already coming (wait a moment for it).
+        if (!c.direction.toString().toLowerCase().contains('incoming') && connectedAt == null && !_remoteAudio) {
+          final code = state.cause?.status_code ?? 'progress';
+          Future.delayed(const Duration(milliseconds: 400), () {
+            if (identical(call, c) && connectedAt == null && !_remoteAudio && !connected) {
+              Diag.log('call', 'ringback on ($code)');
+              _startRingback();
+            }
+          });
+        }
+        break;
+      case CallStateEnum.STREAM:
+        if (state.originator.toString().toLowerCase().contains('remote')) {
+          _remoteAudio = true;
+          _stopRingback();
+        }
+        break;
       case CallStateEnum.CONFIRMED:
       case CallStateEnum.ACCEPTED:
         _stopRinging();
+        _stopRingback();
         NativeCall.instance.connected();
         if (connectedAt == null) {
           // Audio just started: force the route we show (earpiece unless Speaker is on).
           Future.delayed(const Duration(milliseconds: 600), () { if (call != null) applyAudioRoute(); });
+          _watchRoutes();
           // iPhone: log the audio session now and every 10 s of the call (hiss / growing delay checks).
           Diag.iosAudioStats('connected');
           _audioStats?.cancel();
@@ -503,6 +624,10 @@ class Phone extends ChangeNotifier implements SipUaHelperListener {
         break;
       case CallStateEnum.ENDED:
       case CallStateEnum.FAILED:
+        if (call != null && identical(call, c) && _isRingingIn) {
+          final why = '${state.cause?.cause ?? ''} ${state.cause?.reason_phrase ?? ''}'.toLowerCase();
+          endedNote = why.contains('elsewhere') ? 'Answered on another phone' : 'Missed call';
+        }
         _endCall();
         return;
       default:
@@ -525,6 +650,11 @@ class Phone extends ChangeNotifier implements SipUaHelperListener {
   Timer? _audioStats;
 
   void _endCall() {
+    _stopRingback();
+    _remoteAudio = false;
+    _ringWatch?.cancel();
+    _ringWatch = null;
+    _ringPushId = null;
     _audioStats?.cancel();
     _audioStats = null;
     _stopRinging();
@@ -532,7 +662,11 @@ class Phone extends ChangeNotifier implements SipUaHelperListener {
     _dialWatch?.cancel();
     // Always back to the earpiece, so the next call never starts on speaker.
     speaker = false;
+    _pickedRoute = false;
+    _routeWatch?.cancel();
+    _routeWatch = null;
     Helper.setSpeakerphoneOn(false);
+    NativeCall.instance.resetAudio();
     if (_reconnectAfterCall) {
       _reconnectAfterCall = false;
       Future.delayed(const Duration(seconds: 1), () => restart('network changed during the call'));

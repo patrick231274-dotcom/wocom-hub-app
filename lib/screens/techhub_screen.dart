@@ -106,93 +106,137 @@ class TechHubScreen extends StatelessWidget {
       );
 }
 
-// ── welcome: WOCOM, with a Jamaican flag ──────────────────────────────────────
+// ── welcome + sign-in: WE App purple (2026-11-16, Patrick's mockups) ─────────
 
-const _jaGreen = Color(0xFF009B3A);
-const _jaGold = Color(0xFFFED100);
-const _jaBlack = Color(0xFF111111);
+const _wePanel = Color(0xFF4C1D95); // header / welcome purple
+const _weNight = Color(0xFF3B0764); // darker purple (welcome bottom curve)
+const _weGold = Color(0xFFF2C500);
+const _weGreen = Color(0xFF0B8F3A);
+
+/// The white rounded tile with the WOCOM leaf mark, on purple.
+Widget _markTile(double size) => Container(
+      width: size,
+      height: size,
+      padding: EdgeInsets.all(size * 0.14),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(size * 0.26)),
+      child: Image.asset('assets/wocom-mark.png', fit: BoxFit.contain),
+    );
+
+/// Green · gold · white (or purple) stripe.
+Widget _weStripe({double width = 120, Color last = Colors.white}) => SizedBox(
+      width: width,
+      height: 4,
+      child: Row(children: [
+        for (final c in [_weGreen, _weGold, last])
+          Expanded(child: Container(margin: const EdgeInsets.symmetric(horizontal: 2), decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(2)))),
+      ]),
+    );
+
+void _troubleSigningIn(BuildContext context) => showDialog<void>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('Trouble signing in?'),
+        content: const Text('Use the e-mail address on your Tech Hub account. If the code does not arrive (check junk mail too), '
+            'ask the office to check your Tech Hub account: Reception, ext 2000.'),
+        actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))],
+      ),
+    );
 
 class _Welcome extends StatelessWidget {
   const _Welcome();
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: Colors.white,
-        body: Column(children: [
-          // Flag hero: green and black fields with the gold saltire, the W in a white disc.
-          SizedBox(
-            height: 330,
-            width: double.infinity,
-            child: Stack(alignment: Alignment.center, children: [
-              const Positioned.fill(child: CustomPaint(painter: _FlagPainter())),
-              Container(
-                width: 172, height: 172,
-                decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: _jaGold, width: 6),
-                    boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 18, offset: Offset(0, 8))]),
-                padding: const EdgeInsets.all(34),
-                child: Image.asset('assets/wocom-mark.png', fit: BoxFit.contain),
-              ),
-            ]),
-          ),
-          Expanded(
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(28, 26, 28, 20),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Wah gwaan, team!', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _jaGreen)),
-                  const SizedBox(height: 6),
-                  const Text('Welcome to WE', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, height: 1.05, letterSpacing: -0.5)),
-                  const SizedBox(height: 4),
-                  const Text('The WOCOM Employee App', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: wocomMuted)),
-                  const SizedBox(height: 18),
-                  _point(Icons.build_outlined, 'Your Tech Hub tickets, with alerts before they are due'),
-                  _point(Icons.straighten, 'Site surveys with photos, straight from the site'),
-                  _point(Icons.phone_in_talk_outlined, 'Calls on your office extension (coming soon)'),
-                  const Spacer(),
-                  Row(children: [
-                    for (final c in [_jaGreen, _jaGold, _jaBlack, _jaGold, _jaGreen]) Expanded(child: Container(height: 4, margin: const EdgeInsets.symmetric(horizontal: 2), decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(2)))),
-                  ]),
-                  const SizedBox(height: 6),
-                  const Center(child: Text('ONE LOVE · ONE TEAM · 100% JAMAICAN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 2))),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: _jaGreen, textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                    onPressed: () => TechHub.instance.markWelcomed(),
-                    child: const Text("Let's go"),
+        backgroundColor: _wePanel,
+        body: Stack(children: [
+          // Darker curve along the bottom.
+          Positioned(left: 0, right: 0, bottom: 0, height: 250, child: ClipPath(clipper: const _BottomCurve(), child: const ColoredBox(color: _weNight))),
+          SafeArea(
+            child: LayoutBuilder(builder: (context, box) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: box.maxHeight),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 18, 24, 16),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Row(children: [
+                        _markTile(40),
+                        const SizedBox(width: 10),
+                        const Text('WE App', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                      ]),
+                      const SizedBox(height: 22),
+                      const Text('Welcome to WE', style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900, height: 1.05, letterSpacing: -0.5)),
+                      const SizedBox(height: 6),
+                      const Text('The WOCOM team app', style: TextStyle(color: wocomTintLight, fontSize: 17, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 10),
+                      const Text('ONE LOVE · ONE TEAM · 100% JAMAICAN', style: TextStyle(color: _weGold, fontSize: 11.5, fontWeight: FontWeight.w900, letterSpacing: 2)),
+                      const SizedBox(height: 18),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: AspectRatio(aspectRatio: 710 / 372, child: Image.asset('assets/we-staff.png', fit: BoxFit.cover, filterQuality: FilterQuality.medium)),
+                      ),
+                      const SizedBox(height: 12),
+                      Center(child: _weStripe(width: 96)),
+                      const SizedBox(height: 18),
+                      Row(children: [
+                        _tile(Icons.build_outlined, 'Tech Hub'),
+                        const SizedBox(width: 10),
+                        _tile(Icons.forum_outlined, 'Team chat'),
+                        const SizedBox(width: 10),
+                        _tile(Icons.phone_in_talk_outlined, 'Office calls'),
+                      ]),
+                      const Spacer(),
+                      const SizedBox(height: 24),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(56),
+                          backgroundColor: Colors.white,
+                          foregroundColor: _wePanel,
+                          shape: const StadiumBorder(),
+                          textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                        ),
+                        onPressed: () => TechHub.instance.markWelcomed(),
+                        child: const Text('Sign in with Tech Hub'),
+                      ),
+                      const SizedBox(height: 6),
+                      TextButton(
+                        onPressed: () => _troubleSigningIn(context),
+                        style: TextButton.styleFrom(foregroundColor: wocomTint),
+                        child: const Text('Trouble signing in? Contact IT', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ]),
                   ),
-                ]),
+                ),
               ),
-            ),
+            )),
           ),
         ]),
       );
 
-  Widget _point(IconData icon, String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Row(children: [
-          Container(width: 36, height: 36, decoration: BoxDecoration(color: const Color(0xFFE5F5EA), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: _jaGreen, size: 20)),
-          const SizedBox(width: 12),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.3))),
-        ]),
+  Widget _tile(IconData icon, String label) => Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+          decoration: BoxDecoration(color: const Color(0x1FFFFFFF), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0x33FFFFFF))),
+          child: Column(children: [
+            Icon(icon, color: Colors.white, size: 26),
+            const SizedBox(height: 6),
+            Text(label, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+          ]),
+        ),
       );
 }
 
-class _FlagPainter extends CustomPainter {
-  const _FlagPainter();
+class _BottomCurve extends CustomClipper<Path> {
+  const _BottomCurve();
   @override
-  void paint(Canvas canvas, Size s) {
-    final w = s.width, h = s.height, c = Offset(w / 2, h / 2);
-    canvas.drawRect(Offset.zero & s, Paint()..color = _jaGreen);
-    final black = Paint()..color = _jaBlack;
-    canvas.drawPath(Path()..moveTo(0, 0)..lineTo(c.dx, c.dy)..lineTo(0, h)..close(), black);
-    canvas.drawPath(Path()..moveTo(w, 0)..lineTo(c.dx, c.dy)..lineTo(w, h)..close(), black);
-    final gold = Paint()..color = _jaGold..strokeWidth = h * 0.16;
-    canvas.drawLine(Offset.zero, Offset(w, h), gold);
-    canvas.drawLine(Offset(w, 0), Offset(0, h), gold);
-  }
+  Path getClip(Size s) => Path()
+    ..moveTo(0, s.height * 0.28)
+    ..quadraticBezierTo(s.width * 0.5, -s.height * 0.12, s.width, s.height * 0.28)
+    ..lineTo(s.width, s.height)
+    ..lineTo(0, s.height)
+    ..close();
   @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
+  bool shouldReclip(covariant CustomClipper<Path> old) => false;
 }
 
 class _SignIn extends StatefulWidget {
@@ -204,15 +248,20 @@ class _SignIn extends StatefulWidget {
 class _SignInState extends State<_SignIn> {
   final _email = TextEditingController(text: (TechHub.instance.lastEngineer?['email'] ?? '').toString());
   final _code = TextEditingController();
+  final _codeFocus = FocusNode();
   String? _challenge;
   bool _busy = false;
   String? _error;
+
+  @override
+  void dispose() { _email.dispose(); _code.dispose(); _codeFocus.dispose(); super.dispose(); }
 
   Future<void> _go() async {
     setState(() { _busy = true; _error = null; });
     try {
       if (_challenge == null) {
         _challenge = await TechHub.instance.start(_email.text);
+        WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _codeFocus.requestFocus(); });
       } else {
         await TechHub.instance.verify(_challenge!, _code.text);
       }
@@ -223,43 +272,164 @@ class _SignInState extends State<_SignIn> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) => Column(children: [
-        const BrandHeader(title: 'Tech Hub'),
-        Expanded(
-          child: ListView(padding: const EdgeInsets.all(24), children: [
-            const SizedBox(height: 12),
-            Text(_challenge == null ? 'Sign in with your work email' : 'Enter the code we emailed you', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 6),
-            Text(_challenge == null ? 'Tech Hub sends a 6-digit code to the address on your Tech Hub account.' : 'It was sent to ${_email.text.trim()} and expires in 10 minutes. Check junk mail if it is not there.', style: const TextStyle(color: wocomMuted, height: 1.4)),
-            if (_challenge == null && TechHub.instance.lastEngineer != null) ...[
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: wocomSoft, borderRadius: BorderRadius.circular(12)),
-                child: Row(children: [
-                  PersonAvatar(name: (TechHub.instance.lastEngineer!['name'] ?? '').toString(), size: 36),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text('This phone belongs to ${TechHub.instance.lastEngineer!['name'] ?? 'its last user'}${(TechHub.instance.lastEngineer!['extension'] ?? '').toString().isNotEmpty ? ' (ext ${TechHub.instance.lastEngineer!['extension']})' : ''} until someone else signs in.', style: const TextStyle(fontSize: 13, height: 1.35))),
-                ]),
-              ),
-            ],
-            const SizedBox(height: 20),
-            if (_challenge == null)
-              TextField(controller: _email, keyboardType: TextInputType.emailAddress, autofillHints: const [AutofillHints.email], decoration: const InputDecoration(labelText: 'Work email'))
-            else
-              TextField(controller: _code, keyboardType: TextInputType.number, maxLength: 6, autofocus: true, style: const TextStyle(fontSize: 24, letterSpacing: 6, fontWeight: FontWeight.w800), decoration: const InputDecoration(labelText: 'Code', counterText: '')),
-            if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: const TextStyle(color: Color(0xFFB91C1C)))),
-            const SizedBox(height: 20),
-            FilledButton(
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52), backgroundColor: wocomDeep),
-              onPressed: _busy ? null : _go,
-              child: Text(_busy ? 'Please wait…' : (_challenge == null ? 'Send code' : 'Sign in')),
+  Future<void> _resend() async {
+    setState(() { _challenge = null; _code.clear(); _error = null; });
+    await _go();
+    if (mounted && _error == null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('New code sent to ${_email.text.trim()}')));
+  }
+
+  Widget _header(BuildContext context) => Container(
+        decoration: const BoxDecoration(color: _wePanel, borderRadius: BorderRadius.vertical(bottom: Radius.circular(28))),
+        padding: EdgeInsets.fromLTRB(8, MediaQuery.of(context).padding.top + 6, 20, 20),
+        child: Row(children: [
+          IconButton(
+            tooltip: 'Back',
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: _challenge != null ? () => setState(() { _challenge = null; _code.clear(); _error = null; }) : () => TechHub.instance.showWelcome(),
+          ),
+          _markTile(38),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Sign in', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
+              Text('Use your Tech Hub e-mail', style: TextStyle(color: wocomTintLight, fontSize: 13.5)),
+            ]),
+          ),
+        ]),
+      );
+
+  /// The staff photo, fading into the white page at the top and bottom (no box edges).
+  Widget _photo() => ShaderMask(
+        shaderCallback: (r) => const LinearGradient(
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+          colors: [Colors.transparent, Colors.white, Colors.white, Colors.transparent], stops: [0, 0.18, 0.78, 1],
+        ).createShader(r),
+        blendMode: BlendMode.dstIn,
+        child: AspectRatio(aspectRatio: 710 / 372, child: Image.asset('assets/we-staff.png', fit: BoxFit.cover, filterQuality: FilterQuality.medium)),
+      );
+
+  /// Six boxes over one hidden field (paste and SMS/e-mail autofill still work).
+  Widget _codeBoxes() => GestureDetector(
+        onTap: () => _codeFocus.requestFocus(),
+        child: Stack(children: [
+          Opacity(
+            opacity: 0,
+            child: TextField(
+              controller: _code, focusNode: _codeFocus, keyboardType: TextInputType.number, maxLength: 6,
+              autofillHints: const [AutofillHints.oneTimeCode],
+              decoration: const InputDecoration(counterText: ''),
+              onChanged: (v) {
+                final d = v.replaceAll(RegExp(r'\D'), '');
+                if (d != v) _code.value = TextEditingValue(text: d, selection: TextSelection.collapsed(offset: d.length));
+                setState(() {});
+                if (d.length == 6 && !_busy) _go();
+              },
             ),
-            if (_challenge != null) TextButton(onPressed: _busy ? null : () => setState(() { _challenge = null; _code.clear(); _error = null; }), child: const Text('Use a different email')),
+          ),
+          AnimatedBuilder(
+            animation: Listenable.merge([_code, _codeFocus]),
+            builder: (context, _) => Row(children: [
+              for (var i = 0; i < 6; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    height: 56,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: wocomSoft,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: _codeFocus.hasFocus && i == _code.text.length.clamp(0, 5) ? wocomPurple : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                    child: Text(i < _code.text.length ? _code.text[i] : '', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _weNight)),
+                  ),
+                ),
+              ],
+            ]),
+          ),
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final last = TechHub.instance.lastEngineer;
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Column(children: [
+        _header(context),
+        Expanded(
+          child: ListView(padding: EdgeInsets.zero, children: [
+            _photo(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Text(_challenge == null ? "Hi team, let's get you in" : 'Enter the code we e-mailed you',
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _weNight)),
+                const SizedBox(height: 6),
+                Text(
+                  _challenge == null
+                      ? 'Tech Hub sends a 6-digit code to the e-mail on your Tech Hub account.'
+                      : 'Sent to ${_email.text.trim()}. It expires in 10 minutes; check junk mail if it is not there.',
+                  style: const TextStyle(color: wocomMuted, height: 1.4),
+                ),
+                if (_challenge == null && last != null) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: wocomSoft, borderRadius: BorderRadius.circular(14)),
+                    child: Row(children: [
+                      PersonAvatar(name: (last['name'] ?? '').toString(), size: 36),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text('This phone belongs to ${last['name'] ?? 'its last user'}${(last['extension'] ?? '').toString().isNotEmpty ? ' (ext ${last['extension']})' : ''} until someone else signs in.', style: const TextStyle(fontSize: 13, height: 1.35))),
+                    ]),
+                  ),
+                ],
+                const SizedBox(height: 18),
+                if (_challenge == null)
+                  TextField(
+                    controller: _email,
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHints: const [AutofillHints.email],
+                    decoration: InputDecoration(
+                      labelText: 'Work e-mail',
+                      prefixIcon: const Icon(Icons.mail_outline),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: wocomTint, width: 1.5)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: wocomPurple, width: 2)),
+                    ),
+                    onSubmitted: (_) => _busy ? null : _go(),
+                  )
+                else
+                  _codeBoxes(),
+                if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: const TextStyle(color: Color(0xFFB91C1C)))),
+                const SizedBox(height: 18),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54), backgroundColor: _wePanel, foregroundColor: Colors.white,
+                    shape: const StadiumBorder(), textStyle: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900),
+                  ),
+                  onPressed: _busy ? null : _go,
+                  child: Text(_busy ? 'Please wait…' : (_challenge == null ? 'Email me the code' : 'Sign in')),
+                ),
+                if (_challenge != null) ...[
+                  const SizedBox(height: 4),
+                  TextButton(onPressed: _busy ? null : _resend, child: const Text("Didn't get it? Send again")),
+                  TextButton(onPressed: _busy ? null : () => setState(() { _challenge = null; _code.clear(); _error = null; }), child: const Text('Use a different e-mail')),
+                ],
+                const SizedBox(height: 28),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  _weStripe(width: 54, last: _wePanel),
+                  const SizedBox(width: 10),
+                  const Text('For WOCOM staff only', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: wocomMuted)),
+                ]),
+              ]),
+            ),
           ]),
         ),
-      ]);
+      ]),
+    );
+  }
 }
 
 // ── the hub: tickets, surveys, duty ──────────────────────────────────────────
@@ -640,7 +810,7 @@ class _TicketScreenState extends State<TicketScreen> {
     List<Map<String, dynamic>> hFiles(Map h) => ((h['attachments'] as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
     return Scaffold(
       backgroundColor: wocomBg,
-      appBar: AppBar(backgroundColor: wocomPlum, foregroundColor: Colors.white, title: Text(widget.number, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800))),
+      appBar: AppBar(backgroundColor: wocomButton, foregroundColor: Colors.white, title: Text(widget.number, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800))),
       body: t == null
           ? (_error != null ? EmptyState(icon: Icons.cloud_off, text: _error!, action: TextButton(onPressed: _load, child: const Text('Try again'))) : const Center(child: CircularProgressIndicator()))
           : ListView(padding: EdgeInsets.fromLTRB(14, 14, 14, 32 + MediaQuery.of(context).viewPadding.bottom), children: [
@@ -818,7 +988,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
     final address = (s?['site_address'] ?? s?['address'] ?? '').toString();
     return Scaffold(
       backgroundColor: wocomBg,
-      appBar: AppBar(backgroundColor: wocomPlum, foregroundColor: Colors.white, title: const Text('Site survey', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800))),
+      appBar: AppBar(backgroundColor: wocomButton, foregroundColor: Colors.white, title: const Text('Site survey', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800))),
       body: s == null
           ? (_error != null ? EmptyState(icon: Icons.cloud_off, text: _error!) : const Center(child: CircularProgressIndicator()))
           : ListView(padding: EdgeInsets.fromLTRB(14, 14, 14, 32 + MediaQuery.of(context).viewPadding.bottom), children: [

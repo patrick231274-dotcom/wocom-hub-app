@@ -1,0 +1,17 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- WE App, Google Play build. Live location while On duty runs as a foreground service (as in "employee"). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+    <!-- Play forbids self-updating apps; Play delivers updates instead. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove"/>
+    <!-- Calls wake via high-priority FCM; staff can still switch optimisation off in Settings. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" tools:node="remove"/>
+    <!-- Photos come from the Android photo picker (no permission needed). -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove"/>
+    <application>
+        <!-- In-app updater APK hand-off. -->
+        <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.wocomfiles" tools:node="remove"/>
+    </application>
+</manifest>

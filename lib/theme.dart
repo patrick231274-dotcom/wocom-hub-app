@@ -18,10 +18,16 @@ const wocomTint = Color(int.fromEnvironment('BRAND_TINT', defaultValue: 0xFFC4A6
 const wocomTintLight = Color(int.fromEnvironment('BRAND_TINT_LIGHT', defaultValue: 0xFFEDE4FF)); // secondary text on dark
 
 /// Header band on every main screen.
-const wocomGradient = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [wocomDeep, wocomMagenta]);
+/// WE App: solid #4C1D95 (Patrick, 2026-11-16: no gradients).
+const wocomGradient = Brand.isEmployee
+    ? LinearGradient(colors: [Color(0xFF4C1D95), Color(0xFF4C1D95)])
+    : LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [wocomDeep, wocomMagenta]);
 
 /// Call screens: deeper, richer version of the same blend.
-const wocomCallGradient = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [wocomPlum, wocomDeep, wocomMagenta], stops: [0, 0.55, 1]);
+/// WE App: solid #3B0764.
+const wocomCallGradient = Brand.isEmployee
+    ? LinearGradient(colors: [Color(0xFF3B0764), Color(0xFF3B0764)])
+    : LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [wocomPlum, wocomDeep, wocomMagenta], stops: [0, 0.55, 1]);
 
 ThemeData wocomTheme(Brightness b) {
   final dark = b == Brightness.dark;

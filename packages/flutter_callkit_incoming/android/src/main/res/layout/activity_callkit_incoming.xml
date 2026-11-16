@@ -56,7 +56,7 @@
 
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_below="@id/ivAvatar"
                 android:layout_centerHorizontal="true"
@@ -66,20 +66,16 @@
 
                 <TextView
                     android:id="@+id/tvNameCaller"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:autoSizeMaxTextSize="@dimen/size_text_name"
-                    android:autoSizeMinTextSize="12sp"
-                    android:autoSizeStepGranularity="2sp"
-                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
-                    android:maxLines="1"
+                    android:maxLines="2"
+                    android:gravity="center"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:textStyle="bold"
                     android:textColor="@android:color/white"
-                    android:textSize="@dimen/size_text_name"
-                    app:autoSizeMaxTextSize="@dimen/size_text_name"
-                    app:autoSizeMinTextSize="12sp"
-                    app:autoSizeStepGranularity="2sp"
-                    app:autoSizeTextType="uniform"
+                    android:textSize="32sp"
                     tools:ignore="MissingPrefix"
                     tools:targetApi="o"
                     tools:text="Caller Name" />

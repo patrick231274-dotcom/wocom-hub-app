@@ -134,7 +134,7 @@ class _DoorScreenState extends State<DoorScreen> with SingleTickerProviderStateM
     final my = s?['my_request'] is Map ? s!['my_request'] as Map : null;
     return Scaffold(
       backgroundColor: const Color(0xFFF7F5FB),
-      appBar: AppBar(backgroundColor: wocomPlum, foregroundColor: Colors.white, title: Text((s?['name'] ?? 'Office door').toString())),
+      appBar: AppBar(backgroundColor: wocomButton, foregroundColor: Colors.white, title: Text((s?['name'] ?? 'Office door').toString())),
       body: s == null
           ? Center(child: _error != null ? Padding(padding: const EdgeInsets.all(24), child: Text(_error!, textAlign: TextAlign.center)) : const CircularProgressIndicator())
           : RefreshIndicator(

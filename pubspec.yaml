@@ -1,7 +1,7 @@
 name: wocom_app
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.31.11+111
+version: 0.31.12+112
 
 environment:
   sdk: ^3.13.7
@@ -22,6 +22,7 @@ dependencies:
   flutter_webrtc: ^1.6.2+hotfix.4
   geolocator: ^14.1.2
   http: ^1.6.0
+  audio_session: ^0.1.25
   mobile_scanner: ^7.4.2
   package_info_plus: ^10.2.2
   path_provider: ^2.1.6
@@ -51,6 +52,8 @@ flutter:
     - assets/wocom-mark.png
     - assets/wocom-mark-white.png
     - assets/wocom-team.png
+    - assets/we-staff.png
+    - assets/sounds/ringback.wav
     - assets/islandnet-logo.png
     - assets/islandnet-logo-white.png
     - assets/islandnet-mark.png

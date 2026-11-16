@@ -58,6 +58,9 @@ class TechHub extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sign-in page back button: show the welcome page again.
+  void showWelcome() { welcomed = false; notifyListeners(); }
+
   Future<void> markWelcomed() async {
     welcomed = true;
     try { await _store.write(key: 'we_welcomed', value: '1'); } catch (_) {}
@@ -377,6 +380,73 @@ class TechHub extends ChangeNotifier {
   }
   Future<void> deleteMessage(String conv, int msgId) => _send('DELETE', 'chat/$conv/messages/$msgId');
   Future<void> deleteChat(String conv) => _send('DELETE', 'chat/$conv');
+
+  // "Delete for me": messages and group chats this person removed on this phone. Tech Hub only deletes your own
+  // messages (for everyone, within 24 h) and direct chats, so received messages and group chats are hidden here.
+  Set<String> _hiddenMsgs = {};
+  Map<String, int> _hiddenConvs = {}; // conversation id -> newest message id when it was deleted
+  bool _hiddenLoaded = false;
+
+  Future<void> _loadHidden() async {
+    if (_hiddenLoaded) return;
+    _hiddenLoaded = true;
+    try {
+      final m = await _store.read(key: 'chat_hidden_msgs');
+      if (m != null) _hiddenMsgs = (jsonDecode(m) as List).map((e) => e.toString()).toSet();
+      final c = await _store.read(key: 'chat_hidden_convs');
+      if (c != null) _hiddenConvs = (jsonDecode(c) as Map).map((k, v) => MapEntry(k.toString(), (v as num).toInt()));
+    } catch (_) {}
+  }
+
+  Future<void> _saveHidden() async {
+    try {
+      // Keep the newest 2000 so the list never grows without end.
+      final msgs = _hiddenMsgs.length > 2000 ? _hiddenMsgs.skip(_hiddenMsgs.length - 2000).toSet() : _hiddenMsgs;
+      _hiddenMsgs = msgs;
+      await _store.write(key: 'chat_hidden_msgs', value: jsonEncode(msgs.toList()));
+      await _store.write(key: 'chat_hidden_convs', value: jsonEncode(_hiddenConvs));
+    } catch (_) {}
+  }
+
+  Future<void> hideMessage(String conv, int msgId) async {
+    await _loadHidden();
+    _hiddenMsgs.add('$conv:$msgId');
+    await _saveHidden();
+  }
+
+  /// Messages of [conv] without the ones deleted on this phone (and without anything before a "Delete chat").
+  Future<List<Map<String, dynamic>>> visibleMessages(String conv, List<Map<String, dynamic>> msgs) async {
+    await _loadHidden();
+    final cut = _hiddenConvs[conv] ?? 0;
+    return msgs.where((m) {
+      final id = (m['id'] as num?)?.toInt() ?? 0;
+      return id > cut && !_hiddenMsgs.contains('$conv:$id');
+    }).toList();
+  }
+
+  /// Delete a whole chat for this person. Direct chats are deleted on Tech Hub; group chats are hidden on this
+  /// phone and come back (with only the new messages) when someone writes again.
+  Future<void> deleteChatForMe(Map<String, dynamic> c) async {
+    final id = c['id'].toString();
+    if (c['kind'] != 'group') { await deleteChat(id); return; }
+    await _loadHidden();
+    final last = c['last_message'] is Map ? c['last_message'] as Map : const {};
+    final newest = (last['id'] as num?)?.toInt() ?? (c['last_message_id'] as num?)?.toInt() ?? 1 << 31;
+    _hiddenConvs[id] = newest;
+    await _saveHidden();
+  }
+
+  /// Conversations without the group chats deleted on this phone (until a newer message arrives).
+  Future<List<Map<String, dynamic>>> visibleConversations(List<Map<String, dynamic>> list) async {
+    await _loadHidden();
+    return list.where((c) {
+      final cut = _hiddenConvs[c['id'].toString()];
+      if (cut == null) return true;
+      final last = c['last_message'] is Map ? c['last_message'] as Map : const {};
+      final newest = (last['id'] as num?)?.toInt() ?? (c['last_message_id'] as num?)?.toInt();
+      return newest != null && newest > cut;
+    }).toList();
+  }
   Future<void> clearChat(String conv) => _send('POST', 'chat/$conv/clear');
 
   /// Tech Hub hands out paths like /api/mobile/v1/…; make them absolute for image loading.

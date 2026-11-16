@@ -46,14 +46,14 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   ({Color color, IconData icon, String label}) _style(String kind) => switch (kind) {
         'alert' => (color: const Color(0xFFB91C1C), icon: Icons.warning_amber_rounded, label: 'ALERT'),
         'ad' => (color: const Color(0xFFCA8A04), icon: Icons.local_offer_outlined, label: 'OFFER'),
-        _ => (color: const Color(0xFF15803D), icon: Icons.campaign_outlined, label: 'ANNOUNCEMENT'),
+        _ => (color: wocomDeep, icon: Icons.campaign_outlined, label: 'ANNOUNCEMENT'),
       };
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F5FB),
-      appBar: AppBar(backgroundColor: wocomPlum, foregroundColor: Colors.white, title: const Text('Announcements')),
+      appBar: AppBar(backgroundColor: wocomButton, foregroundColor: Colors.white, title: const Text('Announcements')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -156,8 +156,8 @@ class _PopupCard extends StatelessWidget {
     final link = (a['link_url'] ?? '').toString();
     final (accent, label, icon) = switch (kind) {
       'alert' => (const Color(0xFFDC2626), 'ALERT', Icons.warning_amber_rounded),
-      'ad' => (const Color(0xFFFED100), 'SPECIAL OFFER', Icons.local_offer),
-      _ => (const Color(0xFF009B3A), 'ANNOUNCEMENT', Icons.campaign),
+      'ad' => (const Color(0xFFCA8A04), 'SPECIAL OFFER', Icons.local_offer),
+      _ => (wocomDeep, 'ANNOUNCEMENT', Icons.campaign),
     };
     return SafeArea(
       child: Center(
@@ -194,9 +194,9 @@ class _PopupCard extends StatelessWidget {
                 ]),
                 // Jamaican stripe
                 Row(children: const [
-                  Expanded(child: SizedBox(height: 5, child: ColoredBox(color: Color(0xFF009B3A)))),
-                  Expanded(child: SizedBox(height: 5, child: ColoredBox(color: Color(0xFFFED100)))),
-                  Expanded(child: SizedBox(height: 5, child: ColoredBox(color: Color(0xFF111111)))),
+                  Expanded(child: SizedBox(height: 5, child: ColoredBox(color: Color(0xFF0B8F3A)))),
+                  Expanded(child: SizedBox(height: 5, child: ColoredBox(color: Color(0xFFF2C500)))),
+                  Expanded(child: SizedBox(height: 5, child: ColoredBox(color: Color(0xFF4C1D95)))),
                 ]),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
@@ -211,14 +211,14 @@ class _PopupCard extends StatelessWidget {
                   child: Row(children: [
                     if (link.isNotEmpty) ...[
                       Expanded(child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(minimumSize: const Size(0, 50), side: const BorderSide(color: Color(0xFF009B3A), width: 2), foregroundColor: const Color(0xFF007A2E), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                        style: OutlinedButton.styleFrom(minimumSize: const Size(0, 50), side: const BorderSide(color: wocomButton, width: 2), foregroundColor: wocomButton, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                         onPressed: () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication),
                         icon: const Icon(Icons.open_in_new, size: 18), label: const Text('Learn more', style: TextStyle(fontWeight: FontWeight.w800)),
                       )),
                       const SizedBox(width: 10),
                     ],
                     Expanded(child: FilledButton(
-                      style: FilledButton.styleFrom(minimumSize: const Size(0, 50), backgroundColor: const Color(0xFF009B3A), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                      style: FilledButton.styleFrom(minimumSize: const Size(0, 50), backgroundColor: wocomButton, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                       onPressed: () => Navigator.of(context).pop(),
                       child: const Text('Got it', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
                     )),
@@ -234,7 +234,7 @@ class _PopupCard extends StatelessWidget {
 
   Widget _hero(Color accent, IconData icon) => Container(
         height: 200,
-        decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF009B3A), Color(0xFF0B3D1F), Color(0xFF111111)])),
-        child: Center(child: Icon(icon, size: 84, color: const Color(0xFFFED100))),
+        decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF6D28D9), Color(0xFF4C1D95), Color(0xFF3B0764)])),
+        child: Center(child: Icon(icon, size: 84, color: const Color(0xFFF2C500))),
       );
 }

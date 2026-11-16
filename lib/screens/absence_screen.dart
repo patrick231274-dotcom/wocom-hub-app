@@ -89,7 +89,7 @@ class _AbsenceScreenState extends State<AbsenceScreen> {
     final late = _type == 'late';
     return Scaffold(
       backgroundColor: const Color(0xFFF7F5FB),
-      appBar: AppBar(backgroundColor: wocomPlum, foregroundColor: Colors.white, title: const Text('Absence / running late')),
+      appBar: AppBar(backgroundColor: wocomButton, foregroundColor: Colors.white, title: const Text('Absence / running late')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         const Text('What is happening?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
         const SizedBox(height: 10),

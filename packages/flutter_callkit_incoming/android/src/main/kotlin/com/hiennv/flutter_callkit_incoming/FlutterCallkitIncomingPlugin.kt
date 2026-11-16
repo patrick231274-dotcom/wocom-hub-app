@@ -446,7 +446,7 @@ class FlutterCallkitIncomingPlugin : FlutterPlugin, MethodCallHandler, ActivityA
                     val id = (call.arguments as? Map<*, *>)?.get("id")?.toString() ?: ""
                     val st = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && id.isNotEmpty())
                         CallkitConnection.find(id)?.callAudioState else null
-                    if (st == null) { reply.success(null) } else {
+                    if (st == null) { reply.success(CommAudio.routes(context)) } else {
                         fun name(r: Int) = when (r) {
                             android.telecom.CallAudioState.ROUTE_SPEAKER -> "speaker"
                             android.telecom.CallAudioState.ROUTE_BLUETOOTH -> "bluetooth"
@@ -471,10 +471,17 @@ class FlutterCallkitIncomingPlugin : FlutterPlugin, MethodCallHandler, ActivityA
                     val args = call.arguments as? Map<*, *>
                     val id = args?.get("id")?.toString() ?: ""
                     var route = args?.get("route")?.toString() ?: "earpiece"
+                    val conn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && id.isNotEmpty()) CallkitConnection.find(id) else null
+                    // WOCOM: no Telecom call for this one: route with AudioManager (communication device / SCO).
+                    if (conn == null) {
+                        reply.success(CommAudio.setRoute(context, route))
+                        return
+                    }
+                    // A route the person picked sticks; "auto" leaves later Bluetooth hand-offs to the connection.
+                    conn.userPickedRoute = route != "auto"
                     // WOCOM: "auto" = Bluetooth headset if connected, else wired headset, else earpiece.
                     if (route == "auto") {
-                        val mask = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && id.isNotEmpty())
-                            (CallkitConnection.find(id)?.callAudioState?.supportedRouteMask ?: 0) else 0
+                        val mask = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) (conn.callAudioState?.supportedRouteMask ?: 0) else 0
                         route = when {
                             mask and android.telecom.CallAudioState.ROUTE_BLUETOOTH != 0 -> "bluetooth"
                             mask and android.telecom.CallAudioState.ROUTE_WIRED_HEADSET != 0 -> "wired"
@@ -487,23 +494,16 @@ class FlutterCallkitIncomingPlugin : FlutterPlugin, MethodCallHandler, ActivityA
                         "wired" -> android.telecom.CallAudioState.ROUTE_WIRED_HEADSET
                         else -> android.telecom.CallAudioState.ROUTE_EARPIECE
                     }
-                    var handled = false
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        val conn = if (id.isNotEmpty()) CallkitConnection.find(id) else null
-                        if (conn != null) {
-                            conn.setAudioRoute(code)
-                            handled = true
-                        }
-                    }
-                    try {
-                        val audio = context?.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
-                        if (audio != null) {
-                            audio.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
-                            audio.isSpeakerphoneOn = route == "speaker"
-                        }
-                    } catch (_: Exception) {
-                    }
-                    reply.success(handled)
+                    // Telecom owns the audio of its own call: set the route on the Connection only. (Touching
+                    // AudioManager's speakerphone here undid Bluetooth on Android 12+.)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) conn.setAudioRoute(code)
+                    reply.success(true)
+                }
+
+                "resetAudioRoute" -> {
+                    // WOCOM: a call without Telecom ended: release the communication device / SCO.
+                    CommAudio.reset(context)
+                    reply.success(true)
                 }
 
                 else -> {

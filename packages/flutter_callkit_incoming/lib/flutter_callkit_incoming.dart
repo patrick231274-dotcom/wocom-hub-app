@@ -150,6 +150,11 @@ class FlutterCallkitIncoming {
     return r is Map ? Map<String, dynamic>.from(r) : null;
   }
 
+  /// WOCOM: after a call that was not hosted in Telecom, release the call audio route.
+  static Future<void> resetAudioRoute() async {
+    await _channel.invokeMethod("resetAudioRoute");
+  }
+
   static Future<bool> setAudioRoute(String id, String route) async {
     final r = await _channel.invokeMethod("setAudioRoute", {'id': id, 'route': route});
     return r == true;

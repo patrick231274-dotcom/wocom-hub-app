@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show IsolateNameServer;
 
@@ -10,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../screens/home_screen.dart';
 import 'api.dart';
@@ -30,6 +32,33 @@ import 'techhub.dart';
 const kMainPortName = 'wocom_main';
 
 /// Hand a call push to the running app, if it is running. True when it was delivered.
+/// Call ids the server cancelled, kept for 2 minutes in a small file (the background isolate has no memory
+/// between pushes), so a wake-up that arrives after its cancel doesn't ring.
+Future<File> _cancelFile() async => File('${(await getApplicationSupportDirectory()).path}/cancelled_calls.json');
+
+Future<void> _rememberCancelled(String id) async {
+  if (id.isEmpty) return;
+  try {
+    final f = await _cancelFile();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    Map<String, dynamic> m = {};
+    try { m = Map<String, dynamic>.from(jsonDecode(await f.readAsString()) as Map); } catch (_) {}
+    m.removeWhere((_, v) => v is! int || now - v > 120000);
+    m[id] = now;
+    await f.writeAsString(jsonEncode(m));
+  } catch (_) {}
+}
+
+Future<bool> _wasCancelled(String id) async {
+  try {
+    final m = Map<String, dynamic>.from(jsonDecode(await (await _cancelFile()).readAsString()) as Map);
+    final at = m[id];
+    return at is int && DateTime.now().millisecondsSinceEpoch - at < 120000;
+  } catch (_) {
+    return false;
+  }
+}
+
 bool forwardToApp(String kind, String callId, [String caller = '']) {
   final port = IsolateNameServer.lookupPortByName(kMainPortName);
   if (port == null) return false;
@@ -143,8 +172,10 @@ class PushService {
     if (type == 'call_cancel') {
       // The call went away before it reached us: stop the ringing screen.
       Diag.log('push', 'call cancelled by the server');
-      if (Phone.instance.call == null) {
-        Phone.instance.pushCancelled((m.data['call_uuid'] ?? '').toString());
+      final hadCall = Phone.instance.call != null;
+      // Also ends a call that reached the app over SIP but is still ringing (its SIP CANCEL may be lost).
+      Phone.instance.pushCancelled((m.data['call_uuid'] ?? '').toString());
+      if (!hadCall) {
         Phone.instance.autoAnswerPending = false;
         await NativeCall.instance.end();
       }
@@ -219,6 +250,7 @@ Future<void> wocomBackgroundMessage(RemoteMessage m) async {
   }
   if (m.data['type'] == 'call_cancel') {
     Diag.log('push', 'call cancelled by the server (app asleep)');
+    await _rememberCancelled((m.data['call_uuid'] ?? '').toString());
     if (forwardToApp('call_cancel', (m.data['call_uuid'] ?? '').toString())) Diag.log('push', 'cancel passed to the running app');
     try {
       // Only take down THIS call's ringing screen, and only while it is still ringing: a cancel can
@@ -294,6 +326,12 @@ Future<void> wocomBackgroundMessage(RemoteMessage m) async {
   final name = (m.data['caller_name'] ?? '').toString();
   final number = (m.data['caller_number'] ?? '').toString();
   final id = (m.data['call_uuid'] ?? '').toString().isNotEmpty ? m.data['call_uuid'].toString() : DateTime.now().millisecondsSinceEpoch.toString();
+  // The cancel overtook this wake-up (pushes can arrive out of order): the call is gone, don't ring.
+  if (await _wasCancelled(id)) {
+    Diag.log('push', 'call $id was already cancelled: no ringer');
+    await Diag.instance.flush();
+    return;
+  }
   // App still running in the background: register its line now, while the call is still ringing.
   Diag.log('push', forwardToApp('incoming_call', id, name.isNotEmpty ? name : prettyNumber(number)) ? 'passed to the running app: registering now' : 'app not running: line connects when Answer is tapped');
   // WE App: if Tech Hub's "who's calling" already arrived, put it straight into the ringer.

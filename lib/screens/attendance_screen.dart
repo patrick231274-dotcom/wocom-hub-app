@@ -319,7 +319,7 @@ class _LeaveRequestsScreenState extends State<LeaveRequestsScreen> {
     final l = _l;
     return Scaffold(
       backgroundColor: wocomBg,
-      appBar: AppBar(backgroundColor: wocomPlum, foregroundColor: Colors.white, title: const Text('Vacation requests', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
+      appBar: AppBar(backgroundColor: wocomButton, foregroundColor: Colors.white, title: const Text('Vacation requests', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
       body: Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),

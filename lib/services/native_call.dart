@@ -54,6 +54,9 @@ class NativeCall {
           onDecline?.call();
         case CallEventActionCallEnded():
           _shownId = null;
+          // Ended by a push cancel or by Android while our SIP call is still ringing: end ours too.
+          // (Not in the first 2 s: that end event may belong to the call before this one.)
+          if (Phone.instance.ringingFor > const Duration(seconds: 2)) Phone.instance.dropRinging('Android call screen ended');
         case CallEventActionCallIncoming(:final callKitParams) when Platform.isIOS:
           // iPhone: the VoIP push put up the ringer natively; connect the line so the call lands.
           _shownId = callKitParams.id;
@@ -189,8 +192,8 @@ class NativeCall {
   /// True when Android's call (Telecom) took it; false = no Telecom call, route via WebRTC.
   Future<bool> setRoute(String route) async {
     if (Platform.isIOS) return false; // iPhone: the plugin can't route; WebRTC sets AVAudioSession
-    final id = _shownId;
-    if (id == null) return false;
+    // No native call shown (''): the plugin routes with AudioManager (communication device / Bluetooth SCO).
+    final id = _shownId ?? '';
     try {
       final took = await FlutterCallkitIncoming.setAudioRoute(id, route);
       Diag.log('native', 'audio route $route telecom=$took');
@@ -203,9 +206,14 @@ class NativeCall {
 
   /// {current, available, bluetooth_name} for the Telecom call, or null.
   Future<Map<String, dynamic>?> routes() async {
-    final id = _shownId;
-    if (id == null) return null;
-    try { return await FlutterCallkitIncoming.getAudioRoutes(id); } catch (_) { return null; }
+    if (!Platform.isAndroid) return null;
+    try { return await FlutterCallkitIncoming.getAudioRoutes(_shownId ?? ''); } catch (_) { return null; }
+  }
+
+  /// Android, call over: release the communication device / Bluetooth SCO taken for a call without Telecom.
+  Future<void> resetAudio() async {
+    if (!Platform.isAndroid) return;
+    try { await FlutterCallkitIncoming.resetAudioRoute(); } catch (_) {}
   }
 
   /// Our own screen answered or the call ended: take the native screen down.

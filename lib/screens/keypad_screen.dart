@@ -49,6 +49,52 @@ class _KeypadScreenState extends State<KeypadScreen> {
     }
   }
 
+  /// What a pasted text becomes on the keypad: digits, * and #, and a leading + (the dialler handles +1 / 011).
+  /// "(876) 555-0142", "+1 876 555 0142", "tel:8765550142" and "Ext. 2003" all work.
+  static String cleanPasted(String raw) {
+    var s = raw.trim();
+    s = s.replaceFirst(RegExp(r'^(tel|sip|callto):', caseSensitive: false), '');
+    final at = s.indexOf('@');
+    if (at > 0) s = s.substring(0, at); // sip:2003@domain
+    final plus = s.startsWith('+');
+    final kept = s.replaceAll(RegExp(r'[^0-9*#]'), '');
+    return kept.isEmpty ? '' : (plus ? '+$kept' : kept);
+  }
+
+  Future<void> _paste() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final n = cleanPasted(data?.text ?? '');
+    if (!mounted) return;
+    if (n.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No phone number to paste')));
+      return;
+    }
+    HapticFeedback.lightImpact();
+    setState(() => _number = n);
+  }
+
+  Future<void> _copy() async {
+    if (_number.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: _number));
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Number copied')));
+  }
+
+  /// Long-press on the number: Paste / Copy, like any phone's dialler.
+  Future<void> _numberMenu(LongPressStartDetails d) async {
+    HapticFeedback.mediumImpact();
+    final pos = d.globalPosition;
+    final pick = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(pos.dx - 60, pos.dy - 10, pos.dx + 60, pos.dy + 10),
+      items: [
+        const PopupMenuItem(value: 'paste', child: Row(children: [Icon(Icons.content_paste, size: 20), SizedBox(width: 12), Text('Paste')])),
+        PopupMenuItem(value: 'copy', enabled: _number.isNotEmpty, child: const Row(children: [Icon(Icons.copy, size: 20), SizedBox(width: 12), Text('Copy')])),
+      ],
+    );
+    if (pick == 'paste') await _paste();
+    if (pick == 'copy') await _copy();
+  }
+
   Future<void> _call() async {
     if (_number.isEmpty) return;
     final problem = dialProblem(_number);
@@ -105,7 +151,7 @@ class _KeypadScreenState extends State<KeypadScreen> {
         child: LayoutBuilder(builder: (context, box) {
           final wide = box.maxWidth > box.maxHeight; // phone turned sideways, or an unfolded foldable
           // Key size follows the space available in both directions, so nothing overlaps.
-          final byHeight = ((wide ? box.maxHeight - 40 : box.maxHeight - 220) / 4) - 12;
+          final byHeight = ((wide ? box.maxHeight - 40 : box.maxHeight - 242) / 4) - 12;
           final byWidth = ((wide ? box.maxWidth * 0.55 : box.maxWidth) - 48) / 3 - 24;
           final key = byHeight.clamp(50.0, 80.0).clamp(50.0, byWidth.clamp(50.0, 80.0));
 
@@ -123,7 +169,10 @@ class _KeypadScreenState extends State<KeypadScreen> {
               ]),
           ]);
           final quick = quickDialFor(_number);
-          final number = SizedBox(
+          final number = GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onLongPressStart: _numberMenu,
+            child: SizedBox(
             height: 52,
             child: quick != null
                 ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -138,7 +187,16 @@ class _KeypadScreenState extends State<KeypadScreen> {
                     style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w600, letterSpacing: 1.2, color: wocomInk, fontFeatures: [FontFeature.tabularFigures()])),
               ),
             ),
-          );
+          ));
+          // Empty keypad: a quiet hint that a copied number can be pasted.
+          final pasteHint = _number.isEmpty
+              ? TextButton.icon(
+                  onPressed: _paste,
+                  icon: const Icon(Icons.content_paste, size: 16),
+                  label: const Text('Paste a number'),
+                  style: TextButton.styleFrom(foregroundColor: wocomMuted, visualDensity: VisualDensity.compact, textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                )
+              : const SizedBox(height: 32);
           final callButton = SizedBox(
             width: 74,
             height: 74,
@@ -193,7 +251,7 @@ class _KeypadScreenState extends State<KeypadScreen> {
               constraints: const BoxConstraints(maxWidth: 440),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                 number,
-                const SizedBox(height: 10),
+                pasteHint,
                 keys,
                 const SizedBox(height: 30),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [SizedBox(width: key + 24, child: Center(child: directoryButton)), callButton, SizedBox(width: key + 24, child: Center(child: deleteButton))]),

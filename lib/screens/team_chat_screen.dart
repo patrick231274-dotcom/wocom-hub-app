@@ -35,9 +35,31 @@ class _TeamChatsScreenState extends State<TeamChatsScreen> {
   @override
   void dispose() { _poll?.cancel(); TechHub.instance.chatEvent.removeListener(_load); super.dispose(); }
 
+  /// Long-press or swipe a chat: confirm, then delete it for this person. True when it went.
+  Future<bool> _deleteConv(Map<String, dynamic> c) async {
+    final ok = await showDialog<bool>(context: context, builder: (d) => AlertDialog(
+      title: Text('Delete the chat with ${(c['title'] ?? 'this person').toString()}?'),
+      content: const Text('Its messages are removed from your phone. Other people keep their copy. If someone writes again, the chat comes back with the new message only.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(d, true), style: TextButton.styleFrom(foregroundColor: const Color(0xFFB91C1C)), child: const Text('Delete')),
+      ],
+    ));
+    if (ok != true) return false;
+    try {
+      await TechHub.instance.deleteChatForMe(c);
+      if (mounted) setState(() => _convs.removeWhere((x) => x['id'] == c['id']));
+      _load();
+      return true;
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      return false;
+    }
+  }
+
   Future<void> _load() async {
     try {
-      final c = await TechHub.instance.conversations();
+      final c = await TechHub.instance.visibleConversations(await TechHub.instance.conversations());
       if (mounted) setState(() { _convs = c; _error = null; _loading = false; });
     } on ApiException catch (e) {
       if (mounted) setState(() { _error = e.message; _loading = false; });
@@ -101,19 +123,18 @@ class _TeamChatsScreenState extends State<TeamChatsScreen> {
                                 final last = c['last_message'] is Map ? c['last_message'] as Map : const {};
                                 final at = DateTime.tryParse((last['at'] ?? '').toString())?.toLocal();
                                 final group = c['kind'] == 'group';
-                                return ListTile(
+                                return Dismissible(
+                                  key: ValueKey('conv-${c['id']}'),
+                                  direction: DismissDirection.endToStart,
+                                  background: Container(color: const Color(0xFFB91C1C), alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 24),
+                                      child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.delete_outline, color: Colors.white), SizedBox(width: 8), Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800))])),
+                                  confirmDismiss: (_) => _deleteConv(c),
+                                  child: ListTile(
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                                   leading: PersonAvatar(name: (c['title'] ?? '').toString(), group: group, size: 48),
                                   title: Text((c['title'] ?? '').toString(), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 17, fontWeight: unread > 0 ? FontWeight.w900 : FontWeight.w700)),
                                   subtitle: Text((last['text'] ?? '').toString(), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14.5, color: unread > 0 ? wocomInk : wocomMuted, fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w400)),
-                                  onLongPress: group ? null : () async {
-                                    final ok = await showDialog<bool>(context: context, builder: (d) => AlertDialog(
-                                      title: const Text('Delete this chat?'), content: const Text('It is removed for you only, and comes back if a new message arrives.'),
-                                      actions: [TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')), TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Delete'))],
-                                    ));
-                                    if (ok != true) return;
-                                    try { await TechHub.instance.deleteChat(c['id'].toString()); _load(); } on ApiException catch (e) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message))); }
-                                  },
+                                  onLongPress: () => _deleteConv(c),
                                   trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
                                     if (at != null) Text(_when(at), style: const TextStyle(fontSize: 11.5, color: wocomMuted)),
                                     if (unread > 0) ...[
@@ -125,7 +146,7 @@ class _TeamChatsScreenState extends State<TeamChatsScreen> {
                                     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => TeamChatScreen(id: c['id'].toString(), title: (c['title'] ?? '').toString(), group: group)));
                                     _load();
                                   },
-                                );
+                                ));
                               },
                             ),
                     ),
@@ -177,7 +198,7 @@ class _TeamChatScreenState extends State<TeamChatScreen> {
     try {
       final r = await TechHub.instance.messages(widget.id);
       final raw = r['_raw'] is Map ? r['_raw'] as Map : r;
-      final msgs = ((r['messages'] ?? raw['messages'] ?? const []) as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      final msgs = await TechHub.instance.visibleMessages(widget.id, ((r['messages'] ?? raw['messages'] ?? const []) as List).map((e) => Map<String, dynamic>.from(e as Map)).toList());
       final reads = ((r['reads'] ?? raw['reads'] ?? const []) as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
       final grew = msgs.length != _msgs.length;
       if (!mounted) return;
@@ -228,11 +249,28 @@ class _TeamChatScreenState extends State<TeamChatScreen> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (c) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
         if (text.isNotEmpty) ListTile(leading: const Icon(Icons.copy), title: const Text('Copy text'), onTap: () => Navigator.pop(c, 'copy')),
-        if (mine && m['kind'] != 'deleted') ListTile(leading: const Icon(Icons.delete_outline, color: Color(0xFFB91C1C)), title: const Text('Delete for everyone', style: TextStyle(color: Color(0xFFB91C1C))), onTap: () => Navigator.pop(c, 'delete')),
+        ListTile(leading: const Icon(Icons.delete_outline, color: Color(0xFFB91C1C)), title: const Text('Delete for me', style: TextStyle(color: Color(0xFFB91C1C))), onTap: () => Navigator.pop(c, 'hide')),
+        if (mine && m['kind'] != 'deleted') ListTile(leading: const Icon(Icons.delete_forever_outlined, color: Color(0xFFB91C1C)), title: const Text('Delete for everyone', style: TextStyle(color: Color(0xFFB91C1C))), onTap: () => Navigator.pop(c, 'delete')),
       ])),
     );
     if (!mounted || choice == null) return;
     if (choice == 'copy') { await Clipboard.setData(ClipboardData(text: text)); if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied'))); return; }
+    final ok = await showDialog<bool>(context: context, builder: (d) => AlertDialog(
+      title: Text(choice == 'hide' ? 'Delete this message?' : 'Delete for everyone?'),
+      content: Text(choice == 'hide' ? 'It is removed from your phone only.' : 'It is removed for everyone in this chat.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(d, true), style: TextButton.styleFrom(foregroundColor: const Color(0xFFB91C1C)), child: const Text('Delete')),
+      ],
+    ));
+    if (ok != true || !mounted) return;
+    if (choice == 'hide') {
+      final id = (m['id'] as num?)?.toInt();
+      if (id == null) return;
+      await TechHub.instance.hideMessage(widget.id, id);
+      if (mounted) setState(() => _msgs.removeWhere((x) => x['id'] == m['id']));
+      return;
+    }
     try { await TechHub.instance.deleteMessage(widget.id, (m['id'] as num).toInt()); await _load(); }
     on ApiException catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.code == 'too_old' ? 'Messages can only be deleted within 24 hours.' : e.message))); }
   }
@@ -277,7 +315,7 @@ class _TeamChatScreenState extends State<TeamChatScreen> {
     final othersRead = _reads.where((r) => '${r['user_id']}' != '$me').map((r) => (r['last_read_id'] as num?)?.toInt() ?? 0).fold<int>(0, (a, b) => b > a ? b : a);
     return Scaffold(
       backgroundColor: wocomBg,
-      appBar: AppBar(backgroundColor: wocomPlum, foregroundColor: Colors.white, title: Text(widget.title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+      appBar: AppBar(backgroundColor: wocomButton, foregroundColor: Colors.white, title: Text(widget.title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
         actions: [PopupMenuButton<String>(
           onSelected: (v) async {
             try {
@@ -326,8 +364,8 @@ class _TeamChatScreenState extends State<TeamChatScreen> {
                         padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
                         decoration: BoxDecoration(
                           // Mine: solid purple on the right. Others: a light tint of their own colour on the left.
-                          color: mine ? wocomDeep : Color.alphaBlend((_hex(m['from_color']) ?? const Color(0xFF15803D)).withValues(alpha: 0.10), Colors.white),
-                          border: mine ? null : Border.all(color: (_hex(m['from_color']) ?? const Color(0xFF15803D)).withValues(alpha: 0.35)),
+                          color: mine ? wocomDeep : wocomSoft,
+                          border: null,
                           borderRadius: BorderRadius.only(topLeft: const Radius.circular(16), topRight: const Radius.circular(16), bottomLeft: Radius.circular(mine ? 16 : 4), bottomRight: Radius.circular(mine ? 4 : 16)),
                         ),
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

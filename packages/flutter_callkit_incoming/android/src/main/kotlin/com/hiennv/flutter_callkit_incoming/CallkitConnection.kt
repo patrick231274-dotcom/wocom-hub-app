@@ -92,6 +92,23 @@ class CallkitConnection(
     // the OS can also trigger these — we must honor both paths.
     // -------------------------------------------------------------------------
 
+    /** True once the person picked earpiece/speaker/Bluetooth in the app; then we stop auto-switching. */
+    @Volatile var userPickedRoute = false
+    private var lastRouteMask = 0
+
+    @Deprecated("Still delivered on every Android version the app supports")
+    override fun onCallAudioStateChanged(state: android.telecom.CallAudioState?) {
+        @Suppress("DEPRECATION") super.onCallAudioStateChanged(state)
+        val s = state ?: return
+        val bt = android.telecom.CallAudioState.ROUTE_BLUETOOTH
+        val btArrived = (s.supportedRouteMask and bt) != 0 && (lastRouteMask and bt) == 0
+        lastRouteMask = s.supportedRouteMask
+        if (btArrived && !userPickedRoute && s.route != bt) {
+            Log.d(TAG, "Bluetooth connected during call $callId: routing to it")
+            setAudioRoute(bt)
+        }
+    }
+
     override fun onAnswer() {
         super.onAnswer()
         Log.d(TAG, "onAnswer id=$callId")
