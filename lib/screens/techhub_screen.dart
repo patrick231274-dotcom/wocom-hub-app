@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -245,7 +246,7 @@ class _SignIn extends StatefulWidget {
   State<_SignIn> createState() => _SignInState();
 }
 
-class _SignInState extends State<_SignIn> {
+class _SignInState extends State<_SignIn> with WidgetsBindingObserver {
   final _email = TextEditingController(text: (TechHub.instance.lastEngineer?['email'] ?? '').toString());
   final _code = TextEditingController();
   final _codeFocus = FocusNode();
@@ -254,7 +255,49 @@ class _SignInState extends State<_SignIn> {
   String? _error;
 
   @override
-  void dispose() { _email.dispose(); _code.dispose(); _codeFocus.dispose(); super.dispose(); }
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() { WidgetsBinding.instance.removeObserver(this); _email.dispose(); _code.dispose(); _codeFocus.dispose(); super.dispose(); }
+
+  /// Back from the e-mail app: Android closed the keyboard but the hidden code field kept focus, so a tap
+  /// (requestFocus on an already-focused field) did nothing and the keyboard never came back.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _challenge != null && mounted) {
+      // The keyboard connection may be dead after the e-mail app: drop focus, then take it again next frame
+      // (a fresh connection), rather than trusting the old one.
+      _codeFocus.unfocus();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showCodeKeyboard());
+    }
+  }
+
+  /// Focus the hidden code field with the cursor at the end (so backspace deletes the last digit) and make
+  /// sure the keyboard is actually open, even when the field already has focus.
+  void _showCodeKeyboard() {
+    if (!mounted) return;
+    _code.selection = TextSelection.collapsed(offset: _code.text.length);
+    if (_codeFocus.hasFocus) {
+      SystemChannels.textInput.invokeMethod('TextInput.show');
+    } else {
+      _codeFocus.requestFocus();
+    }
+  }
+
+  Future<void> _pasteCode() async {
+    final t = (await Clipboard.getData(Clipboard.kTextPlain))?.text ?? '';
+    final m = RegExp(r'\d{6}').firstMatch(t.replaceAll(RegExp(r'[\s-]'), ''));
+    if (m == null) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No 6-digit code on the clipboard.')));
+      return;
+    }
+    _code.value = TextEditingValue(text: m.group(0)!, selection: const TextSelection.collapsed(offset: 6));
+    setState(() {});
+    if (!_busy) _go();
+  }
 
   Future<void> _go() async {
     setState(() { _busy = true; _error = null; });
@@ -267,6 +310,11 @@ class _SignInState extends State<_SignIn> {
       }
     } on ApiException catch (e) {
       _error = e.message;
+      // Wrong or expired code: empty the boxes and reopen the keyboard for the next try.
+      if (_challenge != null) {
+        _code.clear();
+        WidgetsBinding.instance.addPostFrameCallback((_) => _showCodeKeyboard());
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -310,12 +358,17 @@ class _SignInState extends State<_SignIn> {
 
   /// Six boxes over one hidden field (paste and SMS/e-mail autofill still work).
   Widget _codeBoxes() => GestureDetector(
-        onTap: () => _codeFocus.requestFocus(),
+        behavior: HitTestBehavior.opaque,
+        onTap: _showCodeKeyboard,
+        onLongPress: _pasteCode,
         child: Stack(children: [
           Opacity(
             opacity: 0,
             child: TextField(
+              key: const ValueKey('we-code'),
               controller: _code, focusNode: _codeFocus, keyboardType: TextInputType.number, maxLength: 6,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
+              enableInteractiveSelection: false, // the cursor always stays at the end
               autofillHints: const [AutofillHints.oneTimeCode],
               decoration: const InputDecoration(counterText: ''),
               onChanged: (v) {
@@ -389,6 +442,7 @@ class _SignInState extends State<_SignIn> {
                 const SizedBox(height: 18),
                 if (_challenge == null)
                   TextField(
+                    key: const ValueKey('we-email'),
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
                     autofillHints: const [AutofillHints.email],
@@ -414,6 +468,7 @@ class _SignInState extends State<_SignIn> {
                 ),
                 if (_challenge != null) ...[
                   const SizedBox(height: 4),
+                  TextButton.icon(onPressed: _busy ? null : _pasteCode, icon: const Icon(Icons.content_paste, size: 18), label: const Text('Paste the code')),
                   TextButton(onPressed: _busy ? null : _resend, child: const Text("Didn't get it? Send again")),
                   TextButton(onPressed: _busy ? null : () => setState(() { _challenge = null; _code.clear(); _error = null; }), child: const Text('Use a different e-mail')),
                 ],
