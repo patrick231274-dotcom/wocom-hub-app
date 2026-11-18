@@ -170,10 +170,10 @@ class _DeliveryCard extends StatelessWidget {
             ]),
             const SizedBox(height: 6),
             Text([d['address'], d['parish']].where((x) => x != null && x.toString().isNotEmpty).join(', '), style: const TextStyle(height: 1.3)),
-            if ((d['landmark'] ?? '').toString().isNotEmpty) Text('Near ${d['landmark']}', style: const TextStyle(color: wocomMuted, fontSize: 13)),
+            if ((d['landmark'] ?? '').toString().isNotEmpty) Text('${d['landmark']}', style: const TextStyle(color: wocomMuted, fontSize: 13)),
             const SizedBox(height: 4),
             Text([
-              if ((d['window_label'] ?? '').toString().isNotEmpty) '🕑 ${d['window_label']}',
+              if ((d['window_label'] ?? '').toString().isNotEmpty) '${d['window_label']}',
               'Order ${d['order_no'] ?? ''}',
               if (pk.isNotEmpty) '$scanned of ${pk.length} packages',
             ].join('  ·  '), style: const TextStyle(color: wocomMuted, fontSize: 12.5)),
@@ -214,11 +214,11 @@ class DeliveryScreen extends StatelessWidget {
             Text((d['recipient_name'] ?? '').toString(), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
             const SizedBox(height: 6),
             Text([d['address'], d['parish']].where((x) => x != null && x.toString().isNotEmpty).join(', '), style: const TextStyle(fontSize: 15.5, height: 1.35)),
-            if ((d['landmark'] ?? '').toString().isNotEmpty) Text('Near ${d['landmark']}', style: const TextStyle(color: wocomMuted)),
+            if ((d['landmark'] ?? '').toString().isNotEmpty) Text('${d['landmark']}', style: const TextStyle(color: wocomMuted)),
             if ((d['window_label'] ?? '').toString().isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Deliver: ${d['window_label']}', style: const TextStyle(fontWeight: FontWeight.w700))),
             if ((d['notes'] ?? '').toString().isNotEmpty)
               Container(margin: const EdgeInsets.only(top: 12), padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFFEF9C3), borderRadius: BorderRadius.circular(12)),
-                  child: Text('📝 ${d['notes']}', style: const TextStyle(height: 1.35))),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.sticky_note_2_outlined, size: 20, color: _amber), const SizedBox(width: 8), Expanded(child: Text('${d['notes']}', style: const TextStyle(height: 1.35)))])),
             const SizedBox(height: 14),
             Row(children: [
               Expanded(child: FilledButton.icon(style: FilledButton.styleFrom(backgroundColor: _green, minimumSize: const Size.fromHeight(50)), onPressed: () => _callCustomer(context, d), icon: const Icon(Icons.call), label: const Text('Call customer'))),
