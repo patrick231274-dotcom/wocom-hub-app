@@ -262,7 +262,7 @@ class GfDriver extends ChangeNotifier {
   Future<void> _upload(String path, String field, String filePath, String eventId) async {
     await _ensureSession();
     final req = http.MultipartRequest('POST', Uri.parse('${Brand.crmUrl}/$path'));
-    req.headers.addAll({'Accept': 'application/json', 'Authorization': 'Bearer $_token'});
+    req.headers.addAll({'Accept': 'application/json', 'Authorization': 'Bearer $_token', 'X-Client-Event-Id': eventId});
     req.fields['client_event_id'] = eventId;
     req.files.add(await http.MultipartFile.fromPath(field, filePath));
     late http.Response r;
