@@ -96,9 +96,11 @@ class PushApi {
 }
 
 class ApiException implements Exception {
-  ApiException(this.code, this.message, this.status);
+  ApiException(this.code, this.message, this.status, [this.data = const {}]);
 
   final String code;
+  /// The full error body, for callers that need more than the message (e.g. assigned_to).
+  final Map<String, dynamic> data;
   final String message;
   final int status;
 

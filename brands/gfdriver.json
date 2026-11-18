@@ -1,0 +1,7 @@
+{
+  "BRAND_KEY": "gfdriver",
+  "BRAND_NAME": "GF Driver",
+  "BRAND_COMPANY": "Gorgeous Flowers",
+  "BRAND_CRM_URL": "https://gflowers.wocomenterprise.com/api/v2/driver",
+  "BRAND_UPDATE_URL": "https://push.wocomenterprise.com/downloads/version-gfdriver.json"
+}

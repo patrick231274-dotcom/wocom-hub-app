@@ -67,6 +67,8 @@ android {
         // IslandNet Connect: Island Networks branded app on Google Play. Own package (own Play listing);
         // needs android/app/src/islandnet/google-services.json (Firebase Android app com.wocom.islandnet).
         create("islandnet") { dimension = "brand"; applicationId = "com.wocom.islandnet" }
+        // Gorgeous Flowers delivery drivers (sideloaded). Needs android/app/src/gfdriver/google-services.json (Firebase Android app com.wocom.gfdriver).
+        create("gfdriver") { dimension = "brand"; applicationId = "com.wocom.gfdriver" }
     }
 
     sourceSets {

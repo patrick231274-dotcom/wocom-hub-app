@@ -23,5 +23,9 @@ class Brand {
   /// WOCOM Employee App: staff build with the Tech Hub tab, talking straight to TechHub's public
   /// mobile API (never through the WOCOM Hub platform).
   static const isEmployee = key == 'employee';
+  /// Delivery-driver build (Gorgeous Flowers): deliveries replace the keypad; calls only to the
+  /// driver's own customers (via the company CRM), the shop and emergency numbers.
+  static const isDriver = key == 'gfdriver';
+  static const crmUrl = String.fromEnvironment('BRAND_CRM_URL', defaultValue: '');
   static const techhubUrl = String.fromEnvironment('BRAND_TECHHUB_URL', defaultValue: 'https://techhub.wocomenterprise.com/api/mobile/v1');
 }

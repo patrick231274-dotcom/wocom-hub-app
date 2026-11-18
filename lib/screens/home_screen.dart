@@ -19,6 +19,7 @@ import '../theme.dart';
 import '../widgets/app_drawer.dart';
 import 'call_screen.dart';
 import 'chats_screen.dart';
+import 'driver_screens.dart';
 import 'keypad_screen.dart';
 import 'meet_screen.dart';
 import 'pulse_screen.dart';
@@ -135,8 +136,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _openStatus() => showStatusSheet(context);
 
+  int _dtab = 0;
+
+  /// Delivery-driver build: My deliveries · Scan · Me (no keypad, team, chats or meetings).
+  Widget _driver(BuildContext context) => Scaffold(
+        key: HomeScreen.scaffoldKey,
+        body: IndexedStack(index: _dtab, children: [
+          DeliveriesScreen(onScan: () => setState(() => _dtab = 1)),
+          ScanScreen(active: _dtab == 1),
+          const DriverMeScreen(),
+        ]),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _dtab,
+          onDestinationSelected: (i) => setState(() => _dtab = i),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.local_shipping_outlined), selectedIcon: Icon(Icons.local_shipping), label: 'Deliveries'),
+            NavigationDestination(icon: Icon(Icons.qr_code_scanner), label: 'Scan'),
+            NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Me'),
+          ],
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
+    if (Brand.isDriver) return _driver(context);
     return Scaffold(
       key: HomeScreen.scaffoldKey,
       drawer: AppDrawer(onTab: _goTab),
