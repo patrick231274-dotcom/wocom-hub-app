@@ -39,7 +39,16 @@ Future<void> _callShop(BuildContext context) async {
 
 Future<void> _callCustomer(BuildContext context, Map<String, dynamic> d) async {
   final code = (d['dial_code'] ?? '').toString();
-  if (d['has_phone'] == false || !RegExp(r'^\d{6}$').hasMatch(code)) {
+  // Calls open only once every package is scanned and the order is out for delivery.
+  if (d['has_phone'] != false && !RegExp(r'^\d{6}$').hasMatch(code)) {
+    final pk = (d['packages'] as List? ?? const []).whereType<Map>();
+    final left = pk.where((p) => p['scanned'] != true).length;
+    _toast(context, left > 0
+        ? 'Scan all packages first ($left of ${pk.length} still to scan). Then you can call the customer.'
+        : 'This order is not out for delivery yet. Check with the shop.');
+    return;
+  }
+  if (d['has_phone'] == false) {
     final go = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
       title: const Text('No phone number for this customer'),
       content: const Text('Call the shop and they will help you.'),
