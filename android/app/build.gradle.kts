@@ -69,6 +69,8 @@ android {
         create("islandnet") { dimension = "brand"; applicationId = "com.wocom.islandnet" }
         // Gorgeous Flowers delivery drivers (sideloaded). Needs android/app/src/gfdriver/google-services.json (Firebase Android app com.wocom.gfdriver).
         create("gfdriver") { dimension = "brand"; applicationId = "com.wocom.gfdriver" }
+        // GF Driver on Google Play (same package; Play build manifest in src/gfdriverplay).
+        create("gfdriverplay") { dimension = "brand"; applicationId = "com.wocom.gfdriver" }
     }
 
     sourceSets {

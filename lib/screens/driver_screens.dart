@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart' hide Phone;
 import 'package:path_provider/path_provider.dart';
@@ -609,6 +610,27 @@ class _ScanScreenState extends State<ScanScreen> {
 
 // ── Me tab: shift, line, sign out ────────────────────────────────────────────
 
+/// Google Play "prominent disclosure": before Android's location prompt, say what is collected and why.
+Future<bool> _locationOk(BuildContext context) async {
+  final p = await Geolocator.checkPermission();
+  if (p == LocationPermission.whileInUse || p == LocationPermission.always) return true;
+  if (!context.mounted) return false;
+  final ok = await showDialog<bool>(context: context, barrierDismissible: false, builder: (d) => AlertDialog(
+    icon: const Icon(Icons.location_on_outlined, size: 36),
+    title: const Text('Share your location while On shift'),
+    content: const Text(
+      'GF Driver collects your location while you are On shift, even when the app is closed or not in use, '
+      'so the shop can follow today\'s deliveries on the map and record where each delivery was made.\n\n'
+      'Your location goes only to Gorgeous Flowers. It is never sold or used for ads. '
+      'It stops as soon as you go off shift, and a notification shows while it is on.'),
+    actions: [
+      TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Not now')),
+      FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Continue')),
+    ],
+  ));
+  return ok == true;
+}
+
 class DriverMeScreen extends StatelessWidget {
   const DriverMeScreen({super.key});
 
@@ -632,6 +654,7 @@ class DriverMeScreen extends StatelessWidget {
                 title: const Text('On shift', style: TextStyle(fontWeight: FontWeight.w800)),
                 subtitle: Text(g.shiftProblem ?? (g.onShift ? 'The shop can see your location while you are on shift.' : 'Go on shift when you start delivering.')),
                 onChanged: (v) async {
+                  if (v && !await _locationOk(context)) return;
                   try { await g.setShift(v); } on ApiException catch (e) { if (context.mounted) _toast(context, e.message); }
                 },
               ),
