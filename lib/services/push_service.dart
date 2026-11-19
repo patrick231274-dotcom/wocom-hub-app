@@ -19,6 +19,7 @@ import 'app_update.dart';
 import 'device_health.dart';
 import 'dial_plan.dart';
 import 'diag.dart';
+import 'gf_driver.dart';
 import '../widgets/diag_consent.dart';
 import 'hub.dart';
 import 'native_call.dart';
@@ -209,6 +210,8 @@ class PushService {
     if (type == 'ticket_idle' && (m.data['ticket_number'] ?? '').toString().isNotEmpty) TechHub.instance.idleEvent.value = '${m.data['ticket_number']}|${m.data['close_at'] ?? ''}|${DateTime.now().millisecondsSinceEpoch}';
     if (type == 'leave_request' || type == 'leave_decided') TechHub.instance.leaveEvent.value = '$type@${DateTime.now().millisecondsSinceEpoch}';
     if (type == 'announcement') { TechHub.instance.announcementsEvent.value++; TechHub.instance.refreshMe().catchError((_) {}); }
+    // GF Driver: an order was assigned / changed by the shop: reload My deliveries.
+    if (Brand.isDriver && type.startsWith('delivery_')) GfDriver.instance.refresh();
     if (type == 'task') Hub.instance.tasksEvent.value++;
   }
 }
