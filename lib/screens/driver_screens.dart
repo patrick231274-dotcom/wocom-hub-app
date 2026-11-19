@@ -79,6 +79,7 @@ class DeliveriesScreen extends StatefulWidget {
 
 class _DeliveriesScreenState extends State<DeliveriesScreen> with WidgetsBindingObserver {
   Timer? _poll;
+  bool _showDone = false;
 
   @override
   void initState() {
@@ -106,14 +107,33 @@ class _DeliveriesScreenState extends State<DeliveriesScreen> with WidgetsBinding
       animation: Listenable.merge([GfDriver.instance, Phone.instance]),
       builder: (context, _) {
         final g = GfDriver.instance;
-        final list = g.deliveries;
-        final open = list.where((d) => !const {'delivered', 'returned_to_shop'}.contains(d['status'])).length;
+        // Finished deliveries move to their own tab so the open ones stay at the top of the screen.
+        bool done(Map<String, dynamic> d) => const {'delivered', 'returned_to_shop'}.contains(d['status']);
+        final openList = g.deliveries.where((d) => !done(d)).toList();
+        final doneList = g.deliveries.where(done).toList();
+        final list = _showDone ? doneList : openList;
+        final open = openList.length;
         return Scaffold(
           appBar: AppBar(
             title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('My deliveries', style: TextStyle(fontWeight: FontWeight.w900)),
-              Text('${list.length} today · $open to go${g.pending > 0 ? ' · ${g.pending} waiting to send' : ''}', style: const TextStyle(fontSize: 12.5, color: wocomMuted)),
+              Text('${g.deliveries.length} today · $open to go${g.pending > 0 ? ' · ${g.pending} waiting to send' : ''}', style: const TextStyle(fontSize: 12.5, color: wocomMuted)),
             ]),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(52),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                child: SizedBox(width: double.infinity, child: SegmentedButton<bool>(
+                  segments: [
+                    ButtonSegment(value: false, icon: const Icon(Icons.local_shipping_outlined), label: Text('To deliver (${openList.length})')),
+                    ButtonSegment(value: true, icon: const Icon(Icons.task_alt), label: Text('Delivered (${doneList.length})')),
+                  ],
+                  selected: {_showDone},
+                  showSelectedIcon: false,
+                  onSelectionChanged: (v) => setState(() => _showDone = v.first),
+                )),
+              ),
+            ),
             actions: [
               IconButton(tooltip: 'Call the shop', icon: const Icon(Icons.storefront_outlined), onPressed: () => _callShop(context)),
               IconButton(tooltip: 'Refresh', icon: const Icon(Icons.refresh), onPressed: g.refresh),
@@ -127,7 +147,7 @@ class _DeliveriesScreenState extends State<DeliveriesScreen> with WidgetsBinding
                     const SizedBox(height: 120),
                     Icon(g.loading ? Icons.hourglass_empty : Icons.local_shipping_outlined, size: 56, color: wocomMuted),
                     const SizedBox(height: 12),
-                    Center(child: Text(g.loading ? 'Loading your deliveries…' : (g.error ?? 'No deliveries yet. Scan a package label to start.'), textAlign: TextAlign.center, style: const TextStyle(color: wocomMuted))),
+                    Center(child: Text(g.loading ? 'Loading your deliveries…' : (g.error ?? (_showDone ? 'Nothing delivered yet today.' : (doneList.isNotEmpty ? 'All done for now. Scan a package label for the next one.' : 'No deliveries yet. Scan a package label to start.'))), textAlign: TextAlign.center, style: const TextStyle(color: wocomMuted))),
                   ])
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 96),
