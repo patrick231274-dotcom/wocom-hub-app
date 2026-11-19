@@ -3,22 +3,5 @@
   "BRAND_NAME": "GF Driver",
   "BRAND_COMPANY": "Gorgeous Flowers",
   "BRAND_CRM_URL": "https://gflowers.wocomenterprise.com/api/v2/driver",
-  "BRAND_UPDATE_URL": "https://push.wocomenterprise.com/downloads/version-gfdriver.json",
-  "BRAND_LOGO": "assets/gf-logo.png",
-  "BRAND_LOGO_WHITE": "assets/gf-logo.png",
-  "BRAND_MARK": "assets/gf-mark.png",
-  "BRAND_WEBSITE": "https://gflowers.wocomenterprise.com",
-  "BRAND_WEBSITE_LABEL": "Gorgeous Flowers",
-  "BRAND_DARK_HEX": "#4A0E2A",
-  "BRAND_ACCENT": 4294452345,
-  "BRAND_DEEP": 4290910299,
-  "BRAND_ACCENT2": 4294930339,
-  "BRAND_DARK": 4283043370,
-  "BRAND_SOFT": 4294830064,
-  "BRAND_BG": 4294965242,
-  "BRAND_INK": 4280228381,
-  "BRAND_MUTED": 4285226084,
-  "BRAND_LINE": 4294172134,
-  "BRAND_TINT": 4294559450,
-  "BRAND_TINT_LIGHT": 4294763758
+  "BRAND_UPDATE_URL": "https://push.wocomenterprise.com/downloads/version-gfdriver.json"
 }
