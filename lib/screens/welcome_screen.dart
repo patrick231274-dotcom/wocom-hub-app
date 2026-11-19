@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../brand.dart';
 
 import '../theme.dart';
-import 'sign_in_screen.dart';
 
 /// First screen after installing: the brand, the team, what the app does, and Activate.
 /// Design D (2026-11-07): clean white, W + WOCOM + HUB on one line, flag stripe, team photo
