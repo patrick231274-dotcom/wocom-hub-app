@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart' hide Phone;
@@ -347,8 +348,16 @@ class _ProofScreen extends StatefulWidget {
 
 class _ProofScreenState extends State<_ProofScreen> {
   String? _photo;
-  final _name = TextEditingController();
+  // Pre-filled with the recipient on the order; the driver can clear it and type who took it.
+  late final _name = TextEditingController(text: (widget.d['recipient_name'] ?? '').toString());
   final _sig = GlobalKey<_SignaturePadState>();
+  bool _signing = false; // page scrolling is paused while a finger is on the signature box
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
 
   Future<void> _takePhoto() async {
     final x = await ImagePicker().pickImage(source: ImageSource.camera, maxWidth: 1600, maxHeight: 1600, imageQuality: 70);
@@ -366,48 +375,73 @@ class _ProofScreenState extends State<_ProofScreen> {
     final ready = _photo != null && _name.text.trim().isNotEmpty;
     return Scaffold(
       appBar: AppBar(title: const Text('Proof of delivery')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        Text('Delivering to ${widget.d['recipient_name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 12),
-        AspectRatio(
-          aspectRatio: 4 / 3,
-          child: InkWell(
+      // Save stays on screen at the bottom, above the keyboard and the phone's buttons.
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 12 + MediaQuery.of(context).viewInsets.bottom),
+          child: FilledButton(
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: _green),
+            onPressed: ready ? _save : null,
+            child: Text(ready ? 'Save: delivered' : (_photo == null ? 'Take the photo to save' : 'Enter who received it'),
+                style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900)),
+          ),
+        ),
+      ),
+      body: ListView(
+        physics: _signing ? const NeverScrollableScrollPhysics() : null,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        children: [
+          Text('Delivering to ${widget.d['recipient_name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          InkWell(
             onTap: _takePhoto,
             borderRadius: BorderRadius.circular(14),
             child: Container(
+              height: 170,
               decoration: BoxDecoration(color: wocomSoft, borderRadius: BorderRadius.circular(14), border: Border.all(color: wocomTint)),
               clipBehavior: Clip.antiAlias,
               child: _photo == null
-                  ? const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.photo_camera, size: 44, color: wocomDeep), SizedBox(height: 6), Text('Take a photo of the delivered package (needed)', textAlign: TextAlign.center)])
-                  : Image.file(File(_photo!), fit: BoxFit.cover),
+                  ? const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.photo_camera, size: 40, color: wocomDeep), SizedBox(height: 6), Text('Tap to take a photo of the delivered package (needed)', textAlign: TextAlign.center)])
+                  : Stack(fit: StackFit.expand, children: [
+                      Image.file(File(_photo!), fit: BoxFit.cover),
+                      Positioned(right: 8, bottom: 8, child: FilledButton.tonalIcon(onPressed: _takePhoto, icon: const Icon(Icons.refresh, size: 18), label: const Text('Retake'))),
+                    ]),
             ),
           ),
-        ),
-        if (_photo != null) TextButton.icon(onPressed: _takePhoto, icon: const Icon(Icons.refresh), label: const Text('Take again')),
-        const SizedBox(height: 10),
-        TextField(controller: _name, onChanged: (_) => setState(() {}), textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Received by (name, needed)')),
-        const SizedBox(height: 16),
-        Row(children: [
-          const Expanded(child: Text('Signature (optional)', style: TextStyle(fontWeight: FontWeight.w800))),
-          TextButton(onPressed: () => _sig.currentState?.clear(), child: const Text('Clear')),
-        ]),
-        _SignaturePad(key: _sig),
-        const SizedBox(height: 18),
-        FilledButton(style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: _green), onPressed: ready ? _save : null, child: const Text('Save: delivered', style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900))),
-      ]),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _name,
+            onChanged: (_) => setState(() {}),
+            textCapitalization: TextCapitalization.words,
+            decoration: InputDecoration(
+              labelText: 'Received by (needed)',
+              suffixIcon: _name.text.isEmpty ? null : IconButton(tooltip: 'Clear', icon: const Icon(Icons.close), onPressed: () => setState(_name.clear)),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(children: [
+            const Expanded(child: Text('Signature (optional)', style: TextStyle(fontWeight: FontWeight.w800))),
+            TextButton.icon(onPressed: () => _sig.currentState?.clear(), icon: const Icon(Icons.delete_outline, size: 18), label: const Text('Clear')),
+          ]),
+          _SignaturePad(key: _sig, onSigning: (on) { if (on != _signing) setState(() => _signing = on); }),
+          const SizedBox(height: 6),
+          const Text('Sign inside the box with a finger.', style: TextStyle(fontSize: 12.5, color: wocomMuted)),
+        ],
+      ),
     );
   }
 }
 
 class _SignaturePad extends StatefulWidget {
-  const _SignaturePad({super.key});
+  const _SignaturePad({super.key, required this.onSigning});
+  final ValueChanged<bool> onSigning;
   @override
   State<_SignaturePad> createState() => _SignaturePadState();
 }
 
 class _SignaturePadState extends State<_SignaturePad> {
   final List<List<Offset>> _strokes = [];
-  Size _size = const Size(300, 160);
+  Size _size = const Size(300, 200);
   bool get hasInk => _strokes.any((s) => s.length > 1);
   void clear() => setState(_strokes.clear);
 
@@ -426,14 +460,24 @@ class _SignaturePadState extends State<_SignaturePad> {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, c) {
-      _size = Size(c.maxWidth, 180);
+      _size = Size(c.maxWidth, 200);
       return Container(
-        height: 180,
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: wocomTint)),
-        child: GestureDetector(
-          onPanStart: (e) => setState(() => _strokes.add([e.localPosition])),
-          onPanUpdate: (e) => setState(() => _strokes.last.add(e.localPosition)),
+        height: 200,
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: wocomTint, width: 1.5)),
+        clipBehavior: Clip.antiAlias,
+        // Raw pointer events (not drag gestures), and the page stops scrolling while the finger is
+        // down, so up/down strokes draw instead of moving the page.
+        child: RawGestureDetector(
+          // Claim the touch at once so the page's scroll never takes a signature stroke.
+          gestures: {EagerGestureRecognizer: GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(() => EagerGestureRecognizer(), (_) {})},
+          child: Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (e) { widget.onSigning(true); setState(() => _strokes.add([e.localPosition])); },
+          onPointerMove: (e) { if (_strokes.isNotEmpty) setState(() => _strokes.last.add(e.localPosition)); },
+          onPointerUp: (_) => widget.onSigning(false),
+          onPointerCancel: (_) => widget.onSigning(false),
           child: CustomPaint(painter: _SigPainter(_strokes), size: Size.infinite),
+        ),
         ),
       );
     });
