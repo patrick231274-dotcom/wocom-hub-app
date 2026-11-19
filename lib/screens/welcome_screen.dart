@@ -79,7 +79,9 @@ class WelcomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         TextButton(
-                          onPressed: () => Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const SignInScreen())),
+                          // Same as Activate: the app root then shows the sign-in screen and moves on by itself once
+                          // signed in (pushReplacement took the root's place, so a QR sign-in stayed stuck until restart).
+                          onPressed: onContinue,
                           style: TextButton.styleFrom(foregroundColor: wocomButton, textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                           child: const Text('Already activated? Sign in'),
                         ),
