@@ -564,6 +564,10 @@ class _ScanScreenState extends State<ScanScreen> {
       final who = e.data['assigned_to'];
       final text = switch (e.code) {
         'assigned_elsewhere' => 'This package is with ${who is Map ? (who['name'] ?? 'another driver') : (who ?? 'another driver')}. Ask the shop to reassign it.',
+        // In-store pickup orders: the customer collects at the shop, a driver never takes them.
+        'pickup_order' => 'This is an in-store PICKUP order. The customer collects it at the shop. Leave it at the counter.',
+        'not_ready' when const {'ready_for_collection', 'collected'}.contains(e.data['status']) || e.data['delivery_method'] == 'pickup' =>
+          'This is an in-store PICKUP order. The customer collects it at the shop. Leave it at the counter.',
         'not_ready' => 'This order isn\'t ready for delivery yet. Check with the shop.',
         'unknown_label' => 'This label wasn\'t recognised.',
         _ => e.message,
