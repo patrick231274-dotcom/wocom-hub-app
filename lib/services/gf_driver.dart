@@ -59,7 +59,16 @@ class GfDriver extends ChangeNotifier {
 
   // ── CRM session ─────────────────────────────────────────────────────────────
 
-  Future<void> _ensureSession() async {
+  Future<void>? _signingIn;
+
+  /// One CRM sign-in at a time: callers arriving together share it (each sign-in spends a
+  /// single-use assertion), and the 12 h token is reused until it ends.
+  Future<void> _ensureSession() {
+    final f = _signingIn ??= _ensureSessionOnce().whenComplete(() => _signingIn = null);
+    return f;
+  }
+
+  Future<void> _ensureSessionOnce() async {
     if (_token != null && _tokenUntil != null && DateTime.now().isBefore(_tokenUntil!)) return;
     _token ??= await _store.read(key: 'gfd_token');
     final until = int.tryParse(await _store.read(key: 'gfd_until') ?? '');
@@ -128,7 +137,12 @@ class GfDriver extends ChangeNotifier {
 
   // ── deliveries ──────────────────────────────────────────────────────────────
 
-  Future<void> refresh() async {
+  Future<void>? _refreshing;
+
+  /// Reload the list; overlapping calls (screen open + resume + poll) share one request.
+  Future<void> refresh() => _refreshing ??= _refreshOnce().whenComplete(() => _refreshing = null);
+
+  Future<void> _refreshOnce() async {
     loading = true;
     notifyListeners();
     try {
