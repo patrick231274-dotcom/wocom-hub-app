@@ -75,6 +75,7 @@ android {
 
     sourceSets {
         getByName("employeeplay") { res.srcDirs("src/employee/res") }
+        getByName("gfdriverplay") { res.srcDirs("src/gfdriver/res") }
     }
 
     buildTypes {
