@@ -77,6 +77,8 @@ Future<void> main() async {
     if (msg is! List || msg.length < 2) return;
     if (msg[0] == 'incoming_call') Phone.instance.pushIncoming(msg[1].toString(), msg.length > 2 ? msg[2].toString() : '');
     if (msg[0] == 'call_cancel') Phone.instance.pushCancelled(msg[1].toString());
+    // Shift ended while the app ran in the background: re-read duty so the location service stops.
+    if (msg[0] == 'duty_off') TechHub.instance.refreshMe().catchError((_) {});
   });
   PushService.instance.init();
   NativeCall.instance.onDecline = () => Phone.instance.hangup();

@@ -306,6 +306,13 @@ class TechHub extends ChangeNotifier {
   final leaveEvent = ValueNotifier<String>('');
   /// '<ticket>|<close_at>|<ms>' when a ticket_idle warning arrives or is tapped.
   final idleEvent = ValueNotifier<String>('');
+
+  /// "Go On duty" tapped on a duty reminder / "Still working?" notification: '<sent ms>|<tap ms>'.
+  /// EmployeeHome switches On duty on from this tap (the app is in front, so location starts as user-initiated).
+  final dutyTapEvent = ValueNotifier<String>('');
+
+  /// Duty pushes from Tech Hub's shift schedule (see alertText).
+  static const dutyTypes = {'duty_reminder', 'duty_ended'};
   String get role => (engineer?['role'] ?? '').toString();
   bool get approvesLeave => role == 'admin' || role == 'profile_admin' || (role.isEmpty && isLead);
   String _ymd(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -477,6 +484,30 @@ class TechHub extends ChangeNotifier {
     return _decode(r, path);
   }
 
+  /// Spoken ticket update → Tech Hub: speech-to-text, then a tidy rewrite. Returns
+/// {transcript, rewritten (with [❓word] for unsure words), suggestions{status, status_label, parts[], follow_up}}.
+  /// Tech Hub deletes the audio once processed. [target]: 'client' (emailed) or 'internal'.
+  Future<Map<String, dynamic>> voiceNote(String number, String filePath, String target) async {
+    final path = 'tickets/${Uri.encodeComponent(number)}/voice-note';
+    final req = http.MultipartRequest('POST', Uri.parse('${Brand.techhubUrl}/$path'));
+    req.headers.addAll({..._headers}..remove('Content-Type'));
+    req.fields['target'] = target;
+    req.files.add(await http.MultipartFile.fromPath('audio', filePath));
+    late http.Response r;
+    try { r = await http.Response.fromStream(await req.send().timeout(const Duration(seconds: 120))); }
+    catch (_) { throw ApiException('offline', "Couldn't send your recording. Check your connection, then tap Try again.", 0); }
+    String code = '';
+    try { code = ((jsonDecode(r.body) as Map)['error'] ?? '').toString(); } catch (_) {}
+    if (r.statusCode == 404 && code == 'feature_off') throw ApiException('feature_off', 'Spoken updates are not switched on in Tech Hub yet. Type your update instead.', 404);
+    if (r.statusCode == 404 && code == 'not_found') throw ApiException('not_found', "Tech Hub can't find this ticket any more. Go back and open it again.", 404);
+    if (r.statusCode == 502 || r.statusCode == 503 || r.statusCode == 504) {
+      throw ApiException(code.isEmpty ? 'unavailable' : code, "Couldn't turn your recording into text just now. Your recording is kept: tap Try again, or type instead.", r.statusCode);
+    }
+    if (r.statusCode == 413) throw ApiException('too_large', 'That recording is too long. Keep it under 2 minutes.', 413);
+    if (r.statusCode == 429) throw ApiException('busy', 'Too many spoken updates in a short time. Wait a minute, then tap Try again.', 429);
+    return _decode(r, path);
+  }
+
   // ── per-location photos on survey/visit tickets ───────────────────────────
 
   Future<Map<String, dynamic>> visitPhotoUpload(String number, int visitId, String filePath, String caption) =>
@@ -519,6 +550,13 @@ class TechHub extends ChangeNotifier {
       final what = switch ((d['absence_type'] ?? '').toString()) { 'sick' => 'is out sick', 'late' => 'is running late', 'day_off' => 'is taking a day off', 'vacation' => 'is on vacation', 'emergency' => 'has an emergency', _ => 'is out' };
       final n = int.tryParse('${d['affected_count'] ?? 0}') ?? 0;
       return ('${d['absent_name'] ?? 'A tech'} $what', n > 0 ? '$n job${n == 1 ? '' : 's'} need cover.' : 'No jobs affected.');
+    }
+    if (type == 'duty_reminder') return ((d['title'] ?? "You're not On duty").toString(), (d['body'] ?? 'Tap to start sharing your location.').toString());
+    if (type == 'duty_ended') {
+      final at = DateTime.tryParse((d['ended_at'] ?? '').toString())?.toLocal();
+      final t = at == null ? '' : ' at ${at.hour % 12 == 0 ? 12 : at.hour % 12}:${at.minute.toString().padLeft(2, '0')} ${at.hour < 12 ? 'am' : 'pm'}';
+      return ((d['title'] ?? 'On duty ended$t').toString(),
+          (d['body'] ?? (d['final'] == 'true' ? 'Location sharing is off. Go On duty in WE App if you are still working.' : 'Location sharing is off. Still working? Tap to stay on.')).toString());
     }
     if (type == 'ticket_idle') return ((d['title'] ?? 'No client update for 48 h: ${d['ticket_number'] ?? ''}').toString(), (d['body'] ?? 'It closes automatically in 24 h unless you send the client an update. Tap to update.').toString());
     if (type == 'leave_request' || type == 'leave_decided') return ((d['title'] ?? (type == 'leave_request' ? 'Vacation request: ${d['name'] ?? 'a colleague'}' : 'Vacation request ${d['status'] ?? 'decided'}')).toString(), (d['body'] ?? 'Open WE App to see it.').toString());

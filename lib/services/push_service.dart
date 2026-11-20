@@ -76,6 +76,7 @@ class PushService {
 
   /// Notification tapped: idle-ticket warnings open the "update the client" dialog.
   static void _onTap(String? payload) {
+    if (payload != null && payload.startsWith('duty_on:')) TechHub.instance.dutyTapEvent.value = '${payload.substring(8)}|${DateTime.now().millisecondsSinceEpoch}';
     if (payload != null && payload.startsWith('idle:')) TechHub.instance.idleEvent.value = '${payload.substring(5)}|${DateTime.now().millisecondsSinceEpoch}';
   }
 
@@ -202,6 +203,10 @@ class PushService {
       return;
     }
     if (type == 'token_revoked') { await TechHub.instance.revoked(); return; }
+    // Shift end: Tech Hub already switched On duty off; refresh so location sharing stops now.
+    if (type == 'duty_ended') TechHub.instance.refreshMe().catchError((_) {});
+    // Reminder while the app is open and the person went On duty meanwhile: nothing to remind.
+    if (type == 'duty_reminder' && TechHub.instance.onDuty) return;
     await showMessageNotification(_local, m);
     if (TechHub.pushTypes.contains(type)) TechHub.instance.changes.value++;
     if ((type == 'chat' && m.data.containsKey('from_name')) || type == 'chat_unclaimed') { TechHub.instance.chatEvent.value = '${m.data['conversation_id']}@${DateTime.now().millisecondsSinceEpoch}'; TechHub.instance.conversations().catchError((_) => <Map<String, dynamic>>[]); }
@@ -225,9 +230,12 @@ Future<void> showMessageNotification(FlutterLocalNotificationsPlugin local, Remo
   final body = th?.$2 ?? (m.data['body'] ?? m.notification?.body ?? '').toString();
   if (title.isEmpty && body.isEmpty) return;
   final conv = (m.data['conversation_id'] ?? m.data['ticket_number'] ?? '').toString();
-  final payload = m.data['type'] == 'ticket_idle' ? 'idle:${m.data['ticket_number'] ?? ''}|${m.data['close_at'] ?? ''}' : conv;
+  final duty = TechHub.dutyTypes.contains(m.data['type']);
+  final payload = duty
+      ? 'duty_on:${DateTime.now().millisecondsSinceEpoch}'
+      : m.data['type'] == 'ticket_idle' ? 'idle:${m.data['ticket_number'] ?? ''}|${m.data['close_at'] ?? ''}' : conv;
   await local.show(
-    id: conv.isEmpty ? m.hashCode & 0x7fffffff : conv.hashCode & 0x7fffffff, // one notification per conversation
+    id: duty ? 7101 : conv.isEmpty ? m.hashCode & 0x7fffffff : conv.hashCode & 0x7fffffff, // one notification per conversation; one duty notice
     title: title.isEmpty ? Brand.name : title,
     body: body,
     payload: payload,
@@ -313,6 +321,7 @@ Future<void> wocomBackgroundMessage(RemoteMessage m) async {
     await Diag.instance.flush();
     return;
   }
+  if (m.data['type'] == 'duty_ended' && forwardToApp('duty_off', '')) Diag.log('push', 'duty ended: passed to the running app');
   if (m.data['type'] != 'incoming_call') {
     // Chat, missed call, voicemail: draw the alert ourselves (same look as when the app is open).
     try {

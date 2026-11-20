@@ -102,6 +102,8 @@ class _EmployeeHomeState extends State<_EmployeeHome> with WidgetsBindingObserve
     ArrivalCheck.instance.start();
     TechHub.instance.leaveEvent.addListener(_onLeaveEvent);
     TechHub.instance.idleEvent.addListener(_onIdleEvent);
+    TechHub.instance.dutyTapEvent.addListener(_onDutyTap);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onDutyTap()); // launched from the duty notification
     WidgetsBinding.instance.addPostFrameCallback((_) => _onIdleEvent()); // launched from the notification
     TechHub.instance.refreshMe().catchError((_) {});
     TechHub.instance.announcementsEvent.addListener(_popAnnouncement);
@@ -119,6 +121,25 @@ class _EmployeeHomeState extends State<_EmployeeHome> with WidgetsBindingObserve
     if (v == _doorSeen || !mounted) return;
     _doorSeen = v;
     if (ModalRoute.of(context)?.isCurrent ?? true) Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DoorScreen()));
+  }
+
+  static final _dutySeen = <String>{};
+
+  /// Duty reminder / "Still working?" tapped: go On duty from this tap. Ignored when stale (over 12 h old).
+  Future<void> _onDutyTap() async {
+    final v = TechHub.instance.dutyTapEvent.value;
+    if (v.isEmpty || _dutySeen.contains(v) || !mounted) return;
+    _dutySeen.add(v);
+    final sent = int.tryParse(v.split('|').first) ?? 0;
+    if (DateTime.now().millisecondsSinceEpoch - sent > const Duration(hours: 12).inMilliseconds) return;
+    final th = TechHub.instance;
+    if (!th.signedIn || th.onDuty) return;
+    try {
+      await th.setDuty(true);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("You're On duty. Location sharing is on.")));
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   static final _idleSeen = <String>{};
@@ -187,6 +208,7 @@ class _EmployeeHomeState extends State<_EmployeeHome> with WidgetsBindingObserve
     TechHub.instance.doorEvent.removeListener(_onDoorEvent);
     TechHub.instance.leaveEvent.removeListener(_onLeaveEvent);
     TechHub.instance.idleEvent.removeListener(_onIdleEvent);
+    TechHub.instance.dutyTapEvent.removeListener(_onDutyTap);
     ArrivalCheck.instance.stop();
     WeLocation.instance.stop();
     Phone.instance.disconnect();

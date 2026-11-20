@@ -9,6 +9,7 @@ import '../theme.dart';
 import '../widgets/ui.dart';
 import 'home_screen.dart';
 import 'visit_photos.dart';
+import '../widgets/voice_note.dart';
 import '../services/photo_queue.dart';
 
 // ── shared look ──────────────────────────────────────────────────────────────
@@ -794,8 +795,8 @@ class _TicketScreenState extends State<TicketScreen> {
   Map<String, dynamic>? _t;
   String? _error;
   String? _status;
-  final _comment = TextEditingController();
-  final _note = TextEditingController();
+  final _comment = VoiceTextController();
+  final _note = VoiceTextController();
   final _resolution = TextEditingController();
   bool _busy = false;
 
@@ -831,6 +832,11 @@ class _TicketScreenState extends State<TicketScreen> {
   }
 
   Future<void> _save() async {
+    // Spoken updates: every word the AI was unsure of must be fixed or confirmed first.
+    if (_comment.unsure.isNotEmpty || _note.unsure.isNotEmpty) {
+      _toast(context, 'Check the highlighted words first: fix them, or tap them below the box to confirm.');
+      return;
+    }
     setState(() => _busy = true);
     try {
       await TechHub.instance.update(widget.number,
@@ -937,9 +943,11 @@ class _TicketScreenState extends State<TicketScreen> {
                     ChoiceChip(label: Text(_statusLabel[s]!), selected: _status == s, onSelected: (_) => setState(() => _status = s)),
                 ]),
                 const SizedBox(height: 10),
-                TextField(controller: _comment, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Comment to the client (emailed)')),
+                TextField(controller: _comment, minLines: 2, maxLines: 6, decoration: const InputDecoration(labelText: 'Comment to the client (emailed)')),
+                VoiceNote(number: widget.number, controller: _comment, target: 'client'),
                 const SizedBox(height: 8),
-                TextField(controller: _note, minLines: 1, maxLines: 4, decoration: const InputDecoration(labelText: 'Internal note (staff only)')),
+                TextField(controller: _note, minLines: 1, maxLines: 6, decoration: const InputDecoration(labelText: 'Internal note (staff only)')),
+                VoiceNote(number: widget.number, controller: _note, target: 'internal'),
                 if (_status == 'closed') ...[
                   const SizedBox(height: 8),
                   TextField(controller: _resolution, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Resolution')),
