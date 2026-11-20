@@ -144,7 +144,7 @@ workflows:
       xcode: latest
       cocoapods: default
       vars:
-        APP_STORE_APPLE_ID: "TODO"   # Gorgeous Flowers Driver in App Store Connect (not secret)
+        APP_STORE_APPLE_ID: "6837039513"   # Gorgeous Flowers Driver in App Store Connect (not secret)
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.wocom.gfdriver
@@ -195,7 +195,7 @@ workflows:
       xcode: latest
       cocoapods: default
       vars:
-        APP_STORE_APPLE_ID: "TODO"   # WE app in App Store Connect (not secret)
+        APP_STORE_APPLE_ID: "6837039888"   # WE app in App Store Connect (not secret)
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.wocom.employee
