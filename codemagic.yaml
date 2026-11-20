@@ -155,6 +155,8 @@ workflows:
         script: |
           P=ios/Runner/Info.plist
           sed -i "" "s/com\.wocom\.app/com.wocom.gfdriver/g" ios/Runner.xcodeproj/project.pbxproj
+          # iPhone-only app (no iPad screenshots needed): drop iPad from the device family.
+          sed -i "" "s/TARGETED_DEVICE_FAMILY = \"1,2\";/TARGETED_DEVICE_FAMILY = 1;/g" ios/Runner.xcodeproj/project.pbxproj
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName GF Driver" $P
           /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription GF Driver uses your location while you are On shift, so the shop can follow today's deliveries and record where each delivery was made. It stops when you go off shift." $P
           /usr/libexec/PlistBuddy -c "Add :NSLocationAlwaysAndWhenInUseUsageDescription string GF Driver uses your location only while you are On shift, also when the app is in the background, so the shop can follow deliveries. It stops when you go off shift." $P
@@ -206,6 +208,8 @@ workflows:
         script: |
           P=ios/Runner/Info.plist
           sed -i "" "s/com\.wocom\.app/com.wocom.employee/g" ios/Runner.xcodeproj/project.pbxproj
+          # iPhone-only app (no iPad screenshots needed): drop iPad from the device family.
+          sed -i "" "s/TARGETED_DEVICE_FAMILY = \"1,2\";/TARGETED_DEVICE_FAMILY = 1;/g" ios/Runner.xcodeproj/project.pbxproj
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName WOCOM WE" $P
           /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription WE App uses your location while you are On duty, so the office can see where you are and send the nearest engineer to a job. It stops when you go Off duty." $P
           /usr/libexec/PlistBuddy -c "Add :NSLocationAlwaysAndWhenInUseUsageDescription string WE App uses your location only while you are On duty, also when the app is in the background. It stops when you go Off duty." $P
@@ -241,3 +245,40 @@ workflows:
         auth: integration
         submit_to_testflight: true
         submit_to_app_store: false
+
+  ios-store-screenshots:
+    name: iOS App Store screenshots (GF Driver + WOCOM WE) — upload only
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: WOCOM ASC
+    environment:
+      xcode: latest
+    triggering:
+      events: []
+    scripts:
+      - name: Fetch the iPhone 6.9" screenshots
+        script: |
+          B=https://push.wocomenterprise.com/downloads/play-771c74303eb9fdd8
+          mkdir -p shots/gf/en-US shots/we/en-US
+          for n in 01-deliveries 02-delivery 03-proof 04-not-delivered 05-me; do curl -fsSL -o "shots/gf/en-US/$n.png" "$B/ios-gf-$n.png"; done
+          for n in 01-welcome 02-sign-in 03-tech-hub 05-chat 06-team 09-in-call; do curl -fsSL -o "shots/we/en-US/$n.png" "$B/ios-we-$n.png"; done
+          ls -la shots/*/en-US
+      - name: App Store Connect API key for fastlane (from the WOCOM ASC integration)
+        script: |
+          python3 - <<'PY'
+          import json, os
+          json.dump({"key_id": os.environ["APP_STORE_CONNECT_KEY_IDENTIFIER"], "issuer_id": os.environ["APP_STORE_CONNECT_ISSUER_ID"],
+                     "key": os.environ["APP_STORE_CONNECT_PRIVATE_KEY"], "in_house": False}, open("/tmp/asc_key.json", "w"))
+          PY
+      - name: Upload screenshots only (no binary, no metadata, no submission)
+        script: |
+          up() {
+            fastlane deliver --api_key_path /tmp/asc_key.json --app_identifier "$1" --app_version 0.31.17 \
+              --screenshots_path "$2" --overwrite_screenshots true \
+              --skip_binary_upload true --skip_metadata true --skip_app_version_update true \
+              --submit_for_review false --automatic_release false --run_precheck_before_submit false \
+              --ignore_language_directory_validation true --force true
+          }
+          up com.wocom.gfdriver shots/gf
+          up com.wocom.employee shots/we
