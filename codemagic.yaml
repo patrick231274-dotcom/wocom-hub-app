@@ -267,10 +267,31 @@ workflows:
       - name: App Store Connect API key for fastlane (from the WOCOM ASC integration)
         script: |
           python3 - <<'PY'
-          import json, os
+          # The integration's private key can arrive as a real PEM, a PEM with literal \n, base64 of the
+          # .p8, or the bare key body: turn every form into a proper PEM before fastlane/OpenSSL reads it.
+          import base64, json, os, re, textwrap
+          k = os.environ["APP_STORE_CONNECT_PRIVATE_KEY"].strip().strip('"')
+          k = k.replace("\\n", "\n").replace("\r", "")
+          if "BEGIN" not in k:
+              try:
+                  d = base64.b64decode(k, validate=False).decode("utf-8", "ignore")
+                  if "BEGIN" in d: k = d.strip()
+              except Exception:
+                  pass
+          if "BEGIN" not in k:
+              body = re.sub(r"\s+", "", k)
+              k = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(textwrap.wrap(body, 64)) + "\n-----END PRIVATE KEY-----"
+          else:
+              m = re.search(r"-----BEGIN ([A-Z ]+)-----(.*?)-----END \1-----", k, re.S)
+              if m:
+                  body = re.sub(r"\s+", "", m.group(2))
+                  k = "-----BEGIN %s-----\n%s\n-----END %s-----" % (m.group(1), "\n".join(textwrap.wrap(body, 64)), m.group(1))
+          open("/tmp/AuthKey.p8", "w").write(k + "\n")
           json.dump({"key_id": os.environ["APP_STORE_CONNECT_KEY_IDENTIFIER"], "issuer_id": os.environ["APP_STORE_CONNECT_ISSUER_ID"],
-                     "key": os.environ["APP_STORE_CONNECT_PRIVATE_KEY"], "in_house": False}, open("/tmp/asc_key.json", "w"))
+                     "key": k + "\n", "in_house": False}, open("/tmp/asc_key.json", "w"))
+          print("key lines:", k.count("\n") + 1, "| header:", k.splitlines()[0])
           PY
+          openssl pkey -in /tmp/AuthKey.p8 -noout && echo "key parses OK"
       - name: Upload screenshots only (no binary, no metadata, no submission)
         script: |
           # "fastlane run" takes every option as name:value, so the booleans really are booleans
