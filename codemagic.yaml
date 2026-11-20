@@ -273,12 +273,14 @@ workflows:
           PY
       - name: Upload screenshots only (no binary, no metadata, no submission)
         script: |
+          # "fastlane run" takes every option as name:value, so the booleans really are booleans
+          # (deliver's CLI read "--force true" as a flag + stray word and still asked to confirm).
           up() {
-            fastlane deliver --api_key_path /tmp/asc_key.json --app_identifier "$1" --app_version 0.31.17 \
-              --screenshots_path "$2" --overwrite_screenshots true \
-              --skip_binary_upload true --skip_metadata true --skip_app_version_update true \
-              --submit_for_review false --automatic_release false --run_precheck_before_submit false \
-              --ignore_language_directory_validation true --force true
+            fastlane run upload_to_app_store api_key_path:/tmp/asc_key.json app_identifier:"$1" app_version:0.31.17 \
+              screenshots_path:"$2" overwrite_screenshots:true \
+              skip_binary_upload:true skip_metadata:true skip_app_version_update:true \
+              submit_for_review:false automatic_release:false run_precheck_before_submit:false \
+              ignore_language_directory_validation:true force:true
           }
           up com.wocom.gfdriver shots/gf
           up com.wocom.employee shots/we
