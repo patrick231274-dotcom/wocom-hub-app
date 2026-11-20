@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:http/http.dart' as http;
 
 import '../brand.dart';
@@ -175,8 +176,12 @@ class TechHub extends ChangeNotifier {
     if (token == null) return null;
     try {
       final dev = await Session.deviceInfo();
+      // iPhone: the PushKit VoIP token, so office calls ring a closed iPhone (FCM data pushes don't).
+      String? voip;
+      if (Platform.isIOS) { try { final t = await FlutterCallkitIncoming.getDevicePushTokenVoIP(); if (t != null && t.toString().isNotEmpty) voip = t.toString(); } catch (_) {} }
       final r = await http.post(Uri.parse('$_pushWs/device'), headers: _headers, body: jsonEncode({
         'device_id': await Session.instance.deviceUuid(), 'fcm_token': _pushToken, 'app_version': PushApi.appVersion, 'device_name': dev['name'] ?? '',
+        if (voip != null) 'apns_voip_token': voip,
       })).timeout(const Duration(seconds: 15));
       final d = jsonDecode(r.body) as Map;
       if (r.statusCode == 200) { calling = true; callingNote = null; notifyListeners(); return d['extension']?.toString(); }
