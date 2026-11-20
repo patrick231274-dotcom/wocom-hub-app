@@ -9,6 +9,11 @@ class Brand {
   /// iPhone: Firebase (chat/missed-call alerts) is registered per bundle id.
   static const iosBundleId = String.fromEnvironment('IOS_BUNDLE_ID', defaultValue: 'com.wocom.app');
   static const firebaseIosAppId = String.fromEnvironment('FIREBASE_IOS_APP_ID', defaultValue: '1:935090189192:ios:183bf6ff7a2b4e1f47c03d');
+  /// iPhone Firebase project (defaults: the shared wocom-hub project; the WE App uses its own).
+  static const firebaseIosApiKey = String.fromEnvironment('FIREBASE_IOS_API_KEY', defaultValue: 'AIzaSyDLXVPgpgWV8HIRZkju2LGQKcrXxqiF9G4');
+  static const firebaseSenderId = String.fromEnvironment('FIREBASE_SENDER_ID', defaultValue: '935090189192');
+  static const firebaseProjectId = String.fromEnvironment('FIREBASE_PROJECT_ID', defaultValue: 'wocom-hub');
+  static const firebaseStorageBucket = String.fromEnvironment('FIREBASE_STORAGE_BUCKET', defaultValue: 'wocom-hub.firebasestorage.app');
   static const logo = String.fromEnvironment('BRAND_LOGO', defaultValue: 'assets/wocom-logo.png');
   static const logoWhite = String.fromEnvironment('BRAND_LOGO_WHITE', defaultValue: 'assets/wocom-logo-white.png');
   static const mark = String.fromEnvironment('BRAND_MARK', defaultValue: 'assets/wocom-mark.png');

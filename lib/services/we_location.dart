@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
@@ -45,7 +46,10 @@ class WeLocation extends ChangeNotifier {
     }
     if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) { problem = 'Allow location for WE App so the office can see you while on duty.'; sharing = false; notifyListeners(); return; }
     problem = null;
-    final settings = AndroidSettings(
+    final LocationSettings settings = Platform.isIOS
+        ? AppleSettings(accuracy: LocationAccuracy.high, distanceFilter: 50, activityType: ActivityType.automotiveNavigation,
+            pauseLocationUpdatesAutomatically: false, allowBackgroundLocationUpdates: true, showBackgroundLocationIndicator: true)
+        : AndroidSettings(
       accuracy: LocationAccuracy.high,
       distanceFilter: 50,
       intervalDuration: const Duration(seconds: 30),

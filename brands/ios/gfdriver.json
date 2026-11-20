@@ -1,0 +1,9 @@
+{
+  "BRAND_KEY": "gfdriver",
+  "BRAND_NAME": "GF Driver",
+  "BRAND_COMPANY": "Gorgeous Flowers",
+  "BRAND_CRM_URL": "https://gflowers.wocomenterprise.com/api/v2/driver",
+  "PLAY_STORE": "true",
+  "IOS_BUNDLE_ID": "com.wocom.gfdriver",
+  "FIREBASE_IOS_APP_ID": "TODO-gfdriver-ios-app-id"
+}

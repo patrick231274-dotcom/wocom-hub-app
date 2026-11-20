@@ -89,11 +89,11 @@ class PushService {
         throw StateError('no Firebase iOS app registered for ' + Brand.iosBundleId);
       } else if (Platform.isIOS) {
         await Firebase.initializeApp(options: FirebaseOptions(
-          apiKey: 'AIzaSyDLXVPgpgWV8HIRZkju2LGQKcrXxqiF9G4',
+          apiKey: Brand.firebaseIosApiKey,
           appId: Brand.firebaseIosAppId,
-          messagingSenderId: '935090189192',
-          projectId: 'wocom-hub',
-          storageBucket: 'wocom-hub.firebasestorage.app',
+          messagingSenderId: Brand.firebaseSenderId,
+          projectId: Brand.firebaseProjectId,
+          storageBucket: Brand.firebaseStorageBucket,
           iosBundleId: Brand.iosBundleId,
         ));
       } else {

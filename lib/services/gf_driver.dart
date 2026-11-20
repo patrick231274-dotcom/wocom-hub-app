@@ -304,7 +304,10 @@ class GfDriver extends ChangeNotifier {
     if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
     if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) { shiftProblem = 'Allow location so the shop can see deliveries on the map.'; return; }
     shiftProblem = null;
-    final settings = AndroidSettings(
+    final LocationSettings settings = Platform.isIOS
+        ? AppleSettings(accuracy: LocationAccuracy.high, distanceFilter: 100, activityType: ActivityType.automotiveNavigation,
+            pauseLocationUpdatesAutomatically: false, allowBackgroundLocationUpdates: true, showBackgroundLocationIndicator: true)
+        : AndroidSettings(
       accuracy: LocationAccuracy.high, distanceFilter: 100, intervalDuration: const Duration(seconds: 60),
       foregroundNotificationConfig: const ForegroundNotificationConfig(
         notificationTitle: 'On shift', notificationText: 'Sharing your location with the shop while you are on shift.',

@@ -132,3 +132,112 @@ workflows:
         auth: integration
         submit_to_testflight: true
         submit_to_app_store: false
+
+  ios-gfdriver-testflight:
+    name: GF Driver iOS → TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: WOCOM ASC
+    environment:
+      flutter: 3.47.8
+      xcode: latest
+      cocoapods: default
+      vars:
+        APP_STORE_APPLE_ID: "TODO"   # Gorgeous Flowers Driver in App Store Connect (not secret)
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.wocom.gfdriver
+    triggering:
+      events: []
+    scripts:
+      - name: Brand the iPhone project as GF Driver
+        script: |
+          P=ios/Runner/Info.plist
+          sed -i "" "s/com\.wocom\.app/com.wocom.gfdriver/g" ios/Runner.xcodeproj/project.pbxproj
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName GF Driver" $P
+          /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription GF Driver uses your location while you are On shift, so the shop can follow today's deliveries and record where each delivery was made. It stops when you go off shift." $P
+          /usr/libexec/PlistBuddy -c "Add :NSLocationAlwaysAndWhenInUseUsageDescription string GF Driver uses your location only while you are On shift, also when the app is in the background, so the shop can follow deliveries. It stops when you go off shift." $P
+          /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription GF Driver uses the camera to scan package labels and take proof-of-delivery photos." $P
+          /usr/libexec/PlistBuddy -c "Set :NSMicrophoneUsageDescription GF Driver uses the microphone for calls with customers and the shop." $P
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes: string location" $P
+      - name: Packages
+        script: flutter pub get
+      - name: CocoaPods
+        script: cd ios && pod install --repo-update
+      - name: Signing profiles
+        script: xcode-project use-profiles
+      - name: Build IPA
+        script: |
+          LAST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          BUILD=$(( ${LAST:-0} + 1 ))
+          flutter build ipa --release \
+            --dart-define-from-file=brands/ios/gfdriver.json \
+            --build-number=$BUILD \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
+
+  ios-we-testflight:
+    name: WOCOM WE iOS → TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: WOCOM ASC
+    environment:
+      flutter: 3.47.8
+      xcode: latest
+      cocoapods: default
+      vars:
+        APP_STORE_APPLE_ID: "TODO"   # WE app in App Store Connect (not secret)
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.wocom.employee
+    triggering:
+      events: []
+    scripts:
+      - name: Brand the iPhone project as WOCOM WE
+        script: |
+          P=ios/Runner/Info.plist
+          sed -i "" "s/com\.wocom\.app/com.wocom.employee/g" ios/Runner.xcodeproj/project.pbxproj
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName WOCOM WE" $P
+          /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription WE App uses your location while you are On duty, so the office can see where you are and send the nearest engineer to a job. It stops when you go Off duty." $P
+          /usr/libexec/PlistBuddy -c "Add :NSLocationAlwaysAndWhenInUseUsageDescription string WE App uses your location only while you are On duty, also when the app is in the background. It stops when you go Off duty." $P
+          /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription WE App uses the camera for job and site-survey photos." $P
+          /usr/libexec/PlistBuddy -c "Set :NSMicrophoneUsageDescription WE App uses the microphone for office calls and spoken ticket updates." $P
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes: string location" $P
+          if [ -f "$CM_BUILD_DIR/brands/ios/employee/icon1024.png" ]; then
+            cd ios/Runner/Assets.xcassets/AppIcon.appiconset
+            for f in *.png; do
+              s=$(sips -g pixelWidth "$f" | tail -1 | awk "{print \$2}")
+              sips -s format png -z "$s" "$s" "$CM_BUILD_DIR/brands/ios/employee/icon1024.png" --out "$f" >/dev/null
+            done
+          fi
+      - name: Packages
+        script: flutter pub get
+      - name: CocoaPods
+        script: cd ios && pod install --repo-update
+      - name: Signing profiles
+        script: xcode-project use-profiles
+      - name: Build IPA
+        script: |
+          LAST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          BUILD=$(( ${LAST:-0} + 1 ))
+          flutter build ipa --release \
+            --dart-define-from-file=brands/ios/employee.json \
+            --build-number=$BUILD \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
