@@ -21,9 +21,9 @@
   "BRAND_TINT_LIGHT": 4293780735,
   "PLAY_STORE": "true",
   "IOS_BUNDLE_ID": "com.wocom.employee",
-  "FIREBASE_IOS_APP_ID": "TODO-we-ios-app-id",
-  "FIREBASE_IOS_API_KEY": "TODO",
-  "FIREBASE_SENDER_ID": "TODO",
+  "FIREBASE_IOS_APP_ID": "1:284068500775:ios:01cc2d8fe866c45d5bc502",
+  "FIREBASE_IOS_API_KEY": "AIzaSyBq0ZZLMNkwDPloVNWikK2tEqecofOgV0s",
+  "FIREBASE_SENDER_ID": "284068500775",
   "FIREBASE_PROJECT_ID": "wocom-emoloyee-app",
-  "FIREBASE_STORAGE_BUCKET": "TODO"
+  "FIREBASE_STORAGE_BUCKET": "wocom-emoloyee-app.firebasestorage.app"
 }
