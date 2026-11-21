@@ -83,8 +83,11 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // R8 on (Play's obfuscation threshold); keep rules in proguard-rules.pro. mapping.txt lands in
+            // build/app/outputs/mapping/<flavor>Release/ and is uploaded to Play with each bundle.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
